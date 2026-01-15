@@ -1,6 +1,6 @@
 {
   "name": "@beesolve/lambda-bun-sveltekit-adapter",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A SvelteKit adapter for Bun on Lambda",
   "keywords": [
     "adapter",

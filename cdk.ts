@@ -29,10 +29,11 @@ import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
+import { resolve } from "node:path";
 
 interface SvelteKitProps {
   /**
-   * @default `${__dirname}/build`
+   * @default resolve(`./build`)
    */
   readonly buildDirectory?: string;
 
@@ -74,7 +75,7 @@ export class SvelteKit extends Construct {
     super(scope, id);
 
     const {
-      buildDirectory = `${__dirname}/build`,
+      buildDirectory = resolve(`./build`),
       lambdaProps = {
         bunLayer: new BunLambdaLayer(this, "BunLayer"),
       } satisfies Omit<BunFunctionProps, "entrypoint">,

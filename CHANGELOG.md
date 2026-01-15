@@ -1,3 +1,7 @@
+# 0.2.2
+
+- fix build path resolution
+
 # 0.2.1
 
 - fix options in adapter
