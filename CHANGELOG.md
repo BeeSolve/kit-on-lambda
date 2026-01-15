@@ -1,3 +1,7 @@
+# 0.2.1
+
+- fix options in adapter
+
 # 0.2.0
 
 - add warmer to `SvelteKit` construct

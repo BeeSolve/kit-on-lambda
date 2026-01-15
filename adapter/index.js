@@ -17,7 +17,7 @@ const files = fileURLToPath(new URL("./files", import.meta.url).href);
 
 /** @type {import('./index.js').default} */
 export default function (opts = {}) {
-  const { out = "build", precompress = true, buildOptions = {} } = options;
+  const { out = "build", precompress = true, buildOptions = {} } = opts;
 
   return {
     name: "sveltekit-adapter-bun-lambda",
