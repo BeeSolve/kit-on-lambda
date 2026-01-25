@@ -1,0 +1,69 @@
+{
+  "name": "kit-on-lambda",
+  "version": "0.1.0-beta.0",
+  "description": "SvelteKit adapter for AWS Lambda for Node.js and Bun runtimes",
+  "repository": {
+    "url": "git@github.com:BeeSolve/kit-on-lambda.git",
+    "type": "git"
+  },
+  "author": {
+    "name": "Ivan Barlog",
+    "email": "ivan.barlog@beesolve.com"
+  },
+  "keywords": [
+    "adapter",
+    "svelte",
+    "sveltekit",
+    "aws",
+    "lambda",
+    "nodejs",
+    "bun",
+    "cdk"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/esb.d.ts",
+      "import": "./dist/esb.js"
+    },
+    "./bun": {
+      "types": "./dist/bun.d.ts",
+      "import": "./dist/bun.js"
+    },
+    "./cdk": {
+      "types": "./dist/cdk.d.ts",
+      "import": "./dist/cdk.js"
+    },
+    "./package.json": "./package.json",
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepublish": "bun --bun run build.ts"
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "^2.50.1",
+    "aws-cdk": "^2.1102.0",
+    "aws-cdk-lib": "^2.236.0",
+    "constructs": "^10.4.5"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@types/aws-lambda": "^8.10.160",
+    "@types/bun": "^1.3.6",
+    "@types/node": "^25.0.10",
+    "bun-dts": "^0.1.70",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@beesolve/lambda-bun-runtime": "^1.7.1",
+    "@beesolve/lambda-keep-active": "^1.3.0"
+  }
+}

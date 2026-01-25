@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "target": "es2022",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+  },
+  "include": ["*.ts", "files/**/*.ts", "internal.d.ts", "tmp.js"],
+}
