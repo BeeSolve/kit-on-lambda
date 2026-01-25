@@ -3,7 +3,8 @@
 Adapter for running SvelteKit on AWS Lambda.
 
 Adapter supports by default deployment to `Node.js` runtime bundled with `esbuild`.
-Additionally when you are fun of `Bun`, you can use options of deployment to `Node.js` or even `Bun` runtimes bundled with `Bun`.
+
+Additionally when you are fan of `Bun`, you can use options of deployment to `Node.js` or even `Bun` runtimes bundled with `Bun`.
 
 ## Installation
 
@@ -52,7 +53,9 @@ export default config;
 > It is important to set `origin` to `kit.paths.assets` and `kit.csrf.trustedOrigins`.
 
 
-After you set up your `SvelteKit` you can deploy it with our CDK constructs. The `SvelteKit` is deployed to AWS Lambda behind CloudFront and uses S3 bucket for static assets and caches.
+After you set up your `SvelteKit` you can deploy it with provided CDK constructs. The `SvelteKit` is deployed to AWS Lambda behind CloudFront and uses S3 bucket for static assets and caches.
+
+[!AWS architecture](./architecture.png)
 
 ```ts
 // app.ts
@@ -72,7 +75,7 @@ const { handler, distribution } = new SvelteKit(stack, 'SvelteKit', { runtime: "
 // here you can add permissions to `handler` function etc
 ```
 
-We recommend to put above code to `app.ts` in the root of your repository. Then we recommed to add following to your `packages.json`:
+The above code is recommended to be put to `app.ts` in the root of your repository. After that add following to your `packages.json`:
 
 ```json
 {
@@ -86,6 +89,26 @@ We recommend to put above code to `app.ts` in the root of your repository. Then 
   // ...
 }
 ```
+
+<details>
+    <summary>If you are not using `bun`</summary>
+
+```json
+{
+  // ...
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "cdk": "cdk --app \"bun app.ts\" --profile {your-aws-profile}",
+    // ...
+  }
+  // ...
+}
+```
+
+You probably also want to set up something like `dotenv` for loading `.env` files.
+
+</details>
 
 Once you have changed your `package.json` you will be able to build your `SvelteKit` application and deploy it to AWS:
 
@@ -119,6 +142,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
+By default the Lambda is deployed in `InvokeMode.RESPONSE_STREAM` invoke mode which means that the response will be streamed back to the client. If you wish to buffer the response you can change it in the options.
+
+```ts
+const { handler, distribution } = new SvelteKit(stack, 'SvelteKit', { 
+  runtime: "node",
+  invokeMode: InvokeMode.BUFFERED,
+});
+```
+
+The response streaming is supported only for `node` runtime.
+
 ## 2. build with `Bun` run on `Bun` runtime
 
 todo
@@ -126,3 +160,11 @@ todo
 ## 3. build with `Bun` run on `Node.js` runtime
 
 todo
+
+
+# Thank you
+
+This package has been inspired by various other libraries. I've adapted some of the code from following ones:
+
+- [sveltekit-adapter-aws-base](https://github.com/Data-Only-Greater/sveltekit-adapter-aws-base)
+- [nitro aws-lambda preset](https://github.com/nitrojs/nitro/tree/main/src/presets/aws-lambda)

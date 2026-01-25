@@ -80,7 +80,7 @@ type SvelteKitProps =
       readonly runtime: "node";
 
       /**
-       * @default InvokeMode.BUFFERED
+       * @default InvokeMode.RESPONSE_STREAM
        */
       readonly invokeMode?: InvokeMode;
 
@@ -131,7 +131,7 @@ export class SvelteKit extends Construct {
 
     const invokeMode =
       props.runtime === "node"
-        ? (props.invokeMode ?? InvokeMode.BUFFERED)
+        ? (props.invokeMode ?? InvokeMode.RESPONSE_STREAM)
         : InvokeMode.BUFFERED;
 
     const url = handler.addFunctionUrl({
