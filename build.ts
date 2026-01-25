@@ -20,7 +20,11 @@ await Promise.all([
     plugins: [dts()],
   }),
   build({
-    entrypoints: ["files/node/handler.ts", "files/bun/handler.ts"],
+    entrypoints: [
+      "files/node/handler.ts",
+      "files/node/stream.ts",
+      "files/bun/handler.ts",
+    ],
     external: ["SERVER", "MANIFEST"],
     target: "node",
     minify: false,

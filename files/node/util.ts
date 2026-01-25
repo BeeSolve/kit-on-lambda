@@ -1,4 +1,4 @@
-// adjusted utils from nitro project
+// adjusted code from nitro project
 // @see https://github.com/nitrojs/nitro/blob/dfdff9e93d0fa16b48afe5d9f0c44a87b4b5d249/src/presets/aws-lambda/runtime/_utils.ts
 import type {
   APIGatewayProxyEvent,
@@ -6,6 +6,7 @@ import type {
   Context,
 } from "aws-lambda";
 import { URLSearchParams } from "url";
+import { assertUnreachable } from "util.js";
 
 // Incoming (AWS => Web)
 
@@ -124,7 +125,7 @@ function awsEventBody(
 
 // Outgoing (Web => AWS)
 
-export function awsResponseHeaders(response: Response) {
+export function awsResponseHeaders(response: Response, version: "v1" | "v2") {
   const headers = Object.create(null);
   for (const [key, value] of response.headers) {
     if (value) {
@@ -134,13 +135,25 @@ export function awsResponseHeaders(response: Response) {
 
   const cookies = response.headers.getSetCookie();
 
-  return cookies.length > 0
-    ? {
-        headers,
-        cookies, // ApiGateway v2
-        multiValueHeaders: { "set-cookie": cookies }, // ApiGateway v1
-      }
-    : { headers };
+  if (cookies.length === 0) {
+    return { headers };
+  }
+
+  if (version === "v1") {
+    return {
+      headers,
+      multiValueHeaders: { "set-cookie": cookies },
+    };
+  }
+
+  if (version === "v2") {
+    return {
+      headers,
+      cookies,
+    };
+  }
+
+  assertUnreachable(version);
 }
 
 // AWS Lambda proxy integrations requires base64 encoded buffers

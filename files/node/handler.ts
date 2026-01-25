@@ -1,3 +1,5 @@
+// adjusted code from nitro project
+// @see https://github.com/nitrojs/nitro/blob/dfdff9e93d0fa16b48afe5d9f0c44a87b4b5d249/src/presets/aws-lambda/runtime/aws-lambda.ts
 import { createReadableStream } from "@sveltejs/kit/node";
 import type {
   APIGatewayProxyEvent,
@@ -8,6 +10,7 @@ import type {
 } from "aws-lambda";
 import { manifest } from "MANIFEST";
 import process from "node:process";
+import { isAPIGatewayProxyEvent } from "runtime.js";
 import { Server } from "SERVER";
 import { awsRequest, awsResponseBody, awsResponseHeaders } from "./util.js";
 
@@ -32,7 +35,10 @@ export async function handler(
 
   return {
     statusCode: response.status,
-    ...awsResponseHeaders(response),
+    ...awsResponseHeaders(
+      response,
+      isAPIGatewayProxyEvent(event) ? "v1" : "v2",
+    ),
     ...(await awsResponseBody(response)),
   };
 }

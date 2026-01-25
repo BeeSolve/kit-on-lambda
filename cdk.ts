@@ -4,12 +4,7 @@ import {
   BunLambdaLayer,
 } from "@beesolve/lambda-bun-runtime";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
-import {
-  BundlingOutput,
-  CfnOutput,
-  Duration,
-  RemovalPolicy,
-} from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AllowedMethods,
   CachePolicy,
@@ -33,6 +28,7 @@ import {
   Architecture,
   Function,
   FunctionUrlAuthType,
+  InvokeMode,
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import {
@@ -45,6 +41,7 @@ import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { resolve } from "node:path";
+import { assertUnreachable } from "util.js";
 
 type BaseProps = {
   /**
@@ -81,6 +78,11 @@ type BaseProps = {
 type SvelteKitProps =
   | (BaseProps & {
       readonly runtime: "node";
+
+      /**
+       * @default InvokeMode.RESPONSE_STREAM
+       */
+      readonly invokeMode?: InvokeMode;
 
       /**
        * By default Lambda with 1024MB and 10s of timeout is created.
@@ -127,8 +129,14 @@ export class SvelteKit extends Construct {
 
     handler.addEnvironment("ORIGIN_TOKEN", originToken);
 
+    const invokeMode =
+      props.runtime === "node"
+        ? (props.invokeMode ?? InvokeMode.RESPONSE_STREAM)
+        : InvokeMode.BUFFERED;
+
     const url = handler.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
+      invokeMode,
       cors: {
         allowedOrigins: ["*"],
       },
@@ -253,8 +261,11 @@ export class SvelteKit extends Construct {
     if (props.runtime === "node") {
       const { bundling, ...rest } = props.lambdaProps ?? {};
 
+      const handlerName =
+        props.invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler";
+
       return new NodejsFunction(this, "Handler", {
-        entry: `${buildDirectory}/server/handler.js`,
+        entry: `${buildDirectory}/server/${handlerName}.js`,
         memorySize: 1024,
         timeout: Duration.seconds(10),
         bundling: {
@@ -269,11 +280,4 @@ export class SvelteKit extends Construct {
 
     assertUnreachable(props);
   };
-}
-
-function assertUnreachable(
-  value: never,
-  message = JSON.stringify(value),
-): never {
-  throw Error("An unreachable state reached!\n" + message);
 }
