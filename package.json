@@ -1,6 +1,6 @@
 {
   "name": "kit-on-lambda",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "description": "SvelteKit adapter for AWS Lambda for Node.js and Bun runtimes",
   "repository": {
     "url": "git+ssh://git@github.com/BeeSolve/kit-on-lambda.git",
