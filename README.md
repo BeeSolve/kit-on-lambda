@@ -55,7 +55,7 @@ export default config;
 
 After you set up your `SvelteKit` you can deploy it with provided CDK constructs. The `SvelteKit` is deployed to AWS Lambda behind CloudFront and uses S3 bucket for static assets and caches.
 
-[!AWS architecture](./architecture.png)
+![AWS architecture](./architecture.png)
 
 ```ts
 // app.ts
