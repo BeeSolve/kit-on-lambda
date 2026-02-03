@@ -81,6 +81,22 @@ The above code is recommended to be put to `app.ts` in the root of your reposito
 {
   // ...
   "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "cdk": "cdk --app \"node --experimental-strip-types app.ts\" --profile {your-aws-profile}",
+    // ...
+  }
+  // ...
+}
+```
+
+<details>
+    <summary>If you are using `bun` instead of `node`</summary>
+
+```json
+{
+  // ...
+  "scripts": {
     "dev": "bun run --bun --env-file=./.env vite dev",
     "build": "bunx --bun vite build",
     "cdk": "cdk --app \"bun app.ts\" --profile {your-aws-profile}",
@@ -89,24 +105,6 @@ The above code is recommended to be put to `app.ts` in the root of your reposito
   // ...
 }
 ```
-
-<details>
-    <summary>If you are not using `bun`</summary>
-
-```json
-{
-  // ...
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "cdk": "cdk --app \"bun app.ts\" --profile {your-aws-profile}",
-    // ...
-  }
-  // ...
-}
-```
-
-You probably also want to set up something like `dotenv` for loading `.env` files.
 
 </details>
 

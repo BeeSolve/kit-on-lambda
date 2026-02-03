@@ -1,6 +1,6 @@
 import type { Adapter, Builder } from "@sveltejs/kit";
 import { build } from "esbuild";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,7 +41,7 @@ export default (options: AdapterOptions = {}): Adapter => {
   const sourcemap = options.buildOptions?.sourcemap ?? "linked";
 
   return {
-    name: "sveltekit-on-lambda",
+    name: "kit-on-lambda",
     async adapt(builder: Builder) {
       const tmp = builder.getBuildDirectory("adapter-esbuild-build-lambda");
 
@@ -78,8 +78,6 @@ export default (options: AdapterOptions = {}): Adapter => {
         ].join("\n\n"),
       );
 
-      const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-
       const input: Record<string, string> = {
         index: `${tmp}/index.js`,
         manifest: `${tmp}/manifest.js`,
@@ -92,20 +90,25 @@ export default (options: AdapterOptions = {}): Adapter => {
       await build({
         entryPoints: Object.values(input),
         format: "esm",
-        external: [
-          // dependencies could have deep exports, so we need a regex
-          ...Object.keys(pkg.dependencies || {}).map((d) =>
-            new RegExp(`^${d}(\\/.*)?$`).toString(),
-          ),
-        ],
-        target: "es2022",
+        charset: "utf8",
+        mainFields: ["module", "main"],
+        resolveExtensions: [".ts", ".mjs", ".js", ".json"],
+        external: [],
+        target: "node24",
         bundle: true,
         platform: "node",
         outdir: `${out}/server`,
         minify: options.buildOptions?.minify ?? true,
+        minifyIdentifiers: true,
+        legalComments: "none",
+        keepNames: true,
         splitting: true,
         treeShaking: true,
         sourcemap: sourcemap === "none" ? undefined : sourcemap,
+        sourcesContent: false,
+        banner: {
+          js: `/* CommonJS polyfills */import { fileURLToPath } from 'node:url';import { createRequire } from 'node:module';const __filename = fileURLToPath(import.meta.url);const __dirname = fileURLToPath(new URL('.', import.meta.url));const require = createRequire(import.meta.url);/* end of CommonJS polyfills */`,
+        },
       });
 
       builder.copy(`${files}/node`, `${out}/server`, {
@@ -114,6 +117,10 @@ export default (options: AdapterOptions = {}): Adapter => {
           SERVER: "./index.js",
         },
       });
+      writeFileSync(
+        `${out}/server/package.json`,
+        JSON.stringify({ type: "module" }),
+      );
 
       if (builder.hasServerInstrumentationFile?.()) {
         builder.instrument?.({

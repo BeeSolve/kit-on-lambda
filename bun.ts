@@ -39,7 +39,7 @@ export default (options: AdapterOptions = {}): Adapter => {
   const { out = "build", precompress = true, runtime = "bun" } = options;
 
   return {
-    name: "sveltekit-on-lambda",
+    name: "kit-on-lambda",
     async adapt(builder: Builder) {
       const tmp = builder.getBuildDirectory("adapter-bun-build-lambda");
 

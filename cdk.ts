@@ -26,16 +26,18 @@ import {
 import { ArnPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
+  Code,
   Function,
   FunctionUrlAuthType,
   InvokeMode,
+  LoggingFormat,
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import {
   NodejsFunction,
   NodejsFunctionProps,
-  OutputFormat,
 } from "aws-cdk-lib/aws-lambda-nodejs";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
@@ -90,7 +92,10 @@ type SvelteKitProps =
        *
        * You can change any Lambda function options here
        */
-      readonly lambdaProps?: Omit<NodejsFunctionProps, "entrypoint">;
+      readonly lambdaProps?: Omit<
+        NodejsFunctionProps,
+        "entrypoint" | "bundling" | "entry" | "code" | "handler"
+      >;
     })
   | (BaseProps & {
       readonly runtime: "bun";
@@ -255,25 +260,30 @@ export class SvelteKit extends Construct {
         entrypoint: `${buildDirectory}/server/handler.js`,
         memorySize: 1024,
         timeout: Duration.seconds(10),
+        loggingFormat: LoggingFormat.JSON,
         ...lambdaProps,
       });
     }
     if (props.runtime === "node") {
-      const { bundling, ...rest } = props.lambdaProps ?? {};
+      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {} } =
+        props;
 
-      const handlerName =
-        props.invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler";
+      const { logGroup, ...rest } = lambdaProps;
 
       return new NodejsFunction(this, "Handler", {
-        entry: `${buildDirectory}/server/${handlerName}.js`,
         memorySize: 1024,
         timeout: Duration.seconds(10),
-        bundling: {
-          format: OutputFormat.ESM,
-          ...bundling,
-        },
+        code: Code.fromAsset(`${buildDirectory}/server/`),
+        handler: `${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.handler`,
         runtime: Runtime.NODEJS_24_X,
         architecture: Architecture.ARM_64,
+        loggingFormat: LoggingFormat.JSON,
+        logGroup:
+          logGroup ??
+          new LogGroup(this, "HandlerLogGroup", {
+            retention: RetentionDays.TWO_WEEKS,
+            removalPolicy: RemovalPolicy.DESTROY,
+          }),
         ...rest,
       });
     }
