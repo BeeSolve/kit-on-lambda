@@ -1,3 +1,15 @@
 .DS_Store
 node_modules
 dist
+
+.claude
+
+# SvelteKit generated files
+examples/basic/.svelte-kit
+examples/basic/build-esb
+examples/basic/build-bun
+examples/streaming/.svelte-kit
+examples/streaming/build
+
+# CDK output
+examples/infra/cdk.out

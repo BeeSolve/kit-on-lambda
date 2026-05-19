@@ -92,24 +92,14 @@ same code already present in `asResponseStreamHandler` in `lambda-fetch-api`.
 
 ---
 
-## Research: `kit-on-lambda/runtime.ts` public API
+## Note: `kit-on-lambda/runtime` removed
 
-`runtime.ts` is the `./runtime` export in `package.json` and is consumed by SvelteKit
-app code that needs to reach into the raw AWS event/context from within a handler.
+`kit-on-lambda/runtime` no longer exists. All AWS helpers are imported directly from
+`@beesolve/lambda-fetch-api`:
 
-Current exports:
-- `toAwsEvent(request: Request)` — reads the `aws-event` request header and parses it.
-- `toAwsContext(request: Request)` — reads the `aws-context` request header, parses it,
-  and reconstructs `getRemainingTimeInMillis` from the serialised timestamp delta.
-- `isAPIGatewayProxyEvent(event)` / `isAPIGatewayProxyEventV2(event)` — type guards.
-
-After migration to `lambda-fetch-api`, the header-based transport mechanism
-(`aws-event` / `aws-context`) will no longer exist.  `toAwsEvent` and `toAwsContext`
-will stop working.  Users who imported these from `kit-on-lambda/runtime` must migrate
-to `getAwsEvent()` / `getAwsContext()` from `@beesolve/lambda-fetch-api`.
-
-The type guards `isAPIGatewayProxyEvent` and `isAPIGatewayProxyEventV2` are identical
-in both codebases and should simply be re-exported from `lambda-fetch-api`.
+```ts
+import { getAwsEvent, getAwsContext, isAPIGatewayProxyEvent } from '@beesolve/lambda-fetch-api'
+```
 
 ---
 
@@ -305,18 +295,18 @@ output is self-contained (no `@beesolve/` imports in the bundle).
 
 ## Breaking change for kit-on-lambda users
 
-| Old API (`kit-on-lambda/runtime`) | New API (`@beesolve/lambda-fetch-api`) |
+| Old API | New API (`@beesolve/lambda-fetch-api`) |
 |---|---|
 | `toAwsEvent(request)` | `getAwsEvent()` |
 | `toAwsContext(request)` | `getAwsContext()` |
-| `isAPIGatewayProxyEvent(event)` | `isAPIGatewayProxyEvent(event)` (same, re-exported) |
-| `isAPIGatewayProxyEventV2(event)` | `isAPIGatewayProxyEventV2(event)` (same, re-exported) |
+| `isAPIGatewayProxyEvent(event)` | `isAPIGatewayProxyEvent(event)` |
+| `isAPIGatewayProxyEventV2(event)` | `isAPIGatewayProxyEventV2(event)` |
 
 Users of the old header-based getters must:
 1. Add `@beesolve/lambda-fetch-api` to their project.
-2. Replace `import { toAwsEvent } from 'kit-on-lambda/runtime'` with
-   `import { getAwsEvent } from '@beesolve/lambda-fetch-api'`.
-3. Remove the `request` argument — `getAwsEvent()` takes no arguments.
+2. Replace all imports from `kit-on-lambda/runtime` with
+   `import { ... } from '@beesolve/lambda-fetch-api'`.
+3. Remove the `request` argument from `getAwsEvent()`/`getAwsContext()` — they take no arguments.
 
 The `getRemainingTimeInMillis` reconstruction logic in `toAwsContext` was also subtly
 wrong (the serialised timestamp drifted slightly).  `getAwsContext()` returns the

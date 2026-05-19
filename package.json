@@ -35,11 +35,7 @@
       "types": "./dist/cdk.d.ts",
       "import": "./dist/cdk.js"
     },
-    "./package.json": "./package.json",
-    "./runtime": {
-      "types": "./dist/runtime.d.ts",
-      "import": "./dist/runtime.js"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -48,7 +44,9 @@
     "test": "bun test",
     "prepublishOnly": "bun --bun run build.ts",
     "version": "changeset version",
-    "release": "bun run prepublishOnly && changeset publish"
+    "release": "bun run prepublishOnly && changeset publish",
+    "integ:deploy-test-destroy": "RUN_AWS_INTEG=1 bun test test/integration/deploy-destroy.test.ts",
+    "integ:cleanup": "bash scripts/integ-cleanup.sh"
   },
   "peerDependencies": {
     "@sveltejs/kit": "^2.60.1",

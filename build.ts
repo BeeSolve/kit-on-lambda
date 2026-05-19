@@ -1,6 +1,6 @@
 import { build } from "bun";
 import { dts } from "bun-dts";
-import { rm } from "node:fs/promises";
+import { cp, rm } from "node:fs/promises";
 
 const outdir = "dist";
 
@@ -11,27 +11,15 @@ console.timeEnd("remove outdir");
 console.time("build");
 await Promise.all([
   build({
-    entrypoints: ["bun.ts", "esb.ts", "runtime.ts"],
-    external: ["esbuild"],
+    entrypoints: ["bun.ts", "esb.ts"],
+    external: ["esbuild", "@beesolve/lambda-fetch-api"],
     target: "node",
     minify: false,
     sourcemap: "linked",
     outdir,
     plugins: [dts()],
   }),
-  build({
-    entrypoints: [
-      "files/node/handler.ts",
-      "files/node/stream.ts",
-      "files/bun/handler.ts",
-      "files/bun/stream.ts",
-    ],
-    external: ["SERVER", "MANIFEST"],
-    target: "node",
-    minify: false,
-    sourcemap: "none",
-    outdir: `${outdir}/files`,
-  }),
+  cp("files", `${outdir}/files`, { recursive: true }),
   build({
     entrypoints: ["cdk.ts"],
     external: ["aws-cdk", "aws-cdk-lib", "constructs"],

@@ -1,0 +1,5 @@
+{
+  "app": "bun bin/app.ts",
+  "watch": {},
+  "context": {}
+}

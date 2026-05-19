@@ -1,0 +1,56 @@
+name: Integration Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'examples/**'
+      - 'test/integration/**'
+      - '*.ts'
+      - 'files/**'
+
+concurrency:
+  group: integ-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integ:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: eu-central-1
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_INTEG_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install example app dependencies
+        run: |
+          bun install --frozen-lockfile --cwd examples/basic
+          bun install --frozen-lockfile --cwd examples/streaming
+          bun install --frozen-lockfile --cwd examples/infra
+
+      - name: Build adapter
+        run: bun run prepublishOnly
+
+      - name: Run integration tests
+        run: bun run integ:deploy-test-destroy
+
+      - name: Cleanup (always)
+        if: always()
+        run: bun run integ:cleanup

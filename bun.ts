@@ -79,9 +79,25 @@ export default (options: AdapterOptions = {}): Adapter => {
 
       const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
+      const substitute = (src: string) =>
+        src
+          .replaceAll('"SERVER"', '"./index.js"')
+          .replaceAll('"MANIFEST"', '"./manifest.js"');
+
+      writeFileSync(
+        `${tmp}/handler.ts`,
+        substitute(readFileSync(`${files}/${runtime}/handler.ts`, "utf8")),
+      );
+      writeFileSync(
+        `${tmp}/stream.ts`,
+        substitute(readFileSync(`${files}/${runtime}/stream.ts`, "utf8")),
+      );
+
       const input: Record<string, string> = {
         index: `${tmp}/index.js`,
         manifest: `${tmp}/manifest.js`,
+        handler: `${tmp}/handler.ts`,
+        stream: `${tmp}/stream.ts`,
       };
 
       if (builder.hasServerInstrumentationFile?.()) {
@@ -108,12 +124,12 @@ export default (options: AdapterOptions = {}): Adapter => {
         process.exit(1);
       }
 
-      builder.copy(`${files}/${runtime}`, `${out}/server`, {
-        replace: {
-          MANIFEST: "./manifest.js",
-          SERVER: "./index.js",
-        },
-      });
+      if (runtime === "node") {
+        writeFileSync(
+          `${out}/server/package.json`,
+          JSON.stringify({ type: "module" }),
+        );
+      }
 
       if (builder.hasServerInstrumentationFile?.()) {
         builder.instrument?.({

@@ -156,8 +156,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
-The type guards `isAPIGatewayProxyEvent` and `isAPIGatewayProxyEventV2` are also re-exported from `kit-on-lambda/runtime` for convenience.
-
 ## Option 2 — build with Bun, run on Bun runtime
 
 Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via `@beesolve/lambda-bun-runtime`.

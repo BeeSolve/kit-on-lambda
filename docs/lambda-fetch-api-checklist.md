@@ -197,4 +197,4 @@ Users who imported `toAwsEvent` or `toAwsContext` from `kit-on-lambda/runtime` m
 3. Remove the `request` argument — `getAwsEvent()` takes no arguments.
 4. Same for `toAwsContext` → `getAwsContext()`.
 
-The type guards `isAPIGatewayProxyEvent` / `isAPIGatewayProxyEventV2` are still importable from `kit-on-lambda/runtime` unchanged.
+All AWS helpers (`getAwsEvent`, `getAwsContext`, `isAPIGatewayProxyEvent`, `isAPIGatewayProxyEventV2`, etc.) are imported directly from `@beesolve/lambda-fetch-api`. `kit-on-lambda/runtime` no longer exists.

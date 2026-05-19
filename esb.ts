@@ -1,6 +1,6 @@
 import type { Adapter, Builder } from "@sveltejs/kit";
 import { build } from "esbuild";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { computeRoutes } from "./util.js";
@@ -79,9 +79,25 @@ export default (options: AdapterOptions = {}): Adapter => {
         ].join("\n\n"),
       );
 
+      const substitute = (src: string) =>
+        src
+          .replaceAll('"SERVER"', '"./index.js"')
+          .replaceAll('"MANIFEST"', '"./manifest.js"');
+
+      writeFileSync(
+        `${tmp}/handler.ts`,
+        substitute(readFileSync(`${files}/node/handler.ts`, "utf8")),
+      );
+      writeFileSync(
+        `${tmp}/stream.ts`,
+        substitute(readFileSync(`${files}/node/stream.ts`, "utf8")),
+      );
+
       const input: Record<string, string> = {
         index: `${tmp}/index.js`,
         manifest: `${tmp}/manifest.js`,
+        handler: `${tmp}/handler.ts`,
+        stream: `${tmp}/stream.ts`,
       };
 
       if (builder.hasServerInstrumentationFile?.()) {
@@ -112,12 +128,6 @@ export default (options: AdapterOptions = {}): Adapter => {
         },
       });
 
-      builder.copy(`${files}/node`, `${out}/server`, {
-        replace: {
-          MANIFEST: "./manifest.js",
-          SERVER: "./index.js",
-        },
-      });
       writeFileSync(
         `${out}/server/package.json`,
         JSON.stringify({ type: "module" }),

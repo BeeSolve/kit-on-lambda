@@ -12,5 +12,5 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
   },
-  "include": ["*.ts", "files/**/*.ts", "internal.d.ts"],
+  "include": ["*.ts", "files/**/*.ts", "test/**/*.ts", "internal.d.ts"],
 }
