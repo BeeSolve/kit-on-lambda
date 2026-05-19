@@ -1,14 +1,19 @@
 # kit-on-lambda
 
-Adapter for running SvelteKit on AWS Lambda.
+[![npm version](https://img.shields.io/npm/v/kit-on-lambda)](https://www.npmjs.com/package/kit-on-lambda)
+[![license](https://img.shields.io/npm/l/kit-on-lambda)](./LICENSE)
 
-Adapter supports by default deployment to `Node.js` runtime bundled with `esbuild`.
+SvelteKit adapter for AWS Lambda — deploy to Node.js or Bun runtimes, bundled with esbuild or Bun, behind CloudFront.
 
-Additionally when you are fan of `Bun`, you can use options of deployment to `Node.js` or even `Bun` runtimes bundled with `Bun`.
+Supports three deployment configurations:
+
+| Option | Build tool | Lambda runtime |
+|--------|------------|----------------|
+| 1 (default) | esbuild | Node.js |
+| 2 | Bun | Bun (custom layer) |
+| 3 | Bun | Node.js |
 
 ## Installation
-
-You can choose your favourite package manager to install the adapter and it's peer dependencies. There is an assumption that you've already set up `SvelteKit` in your repository.
 
 ```bash
 npm i kit-on-lambda aws-cdk aws-cdk-lib constructs
@@ -16,33 +21,42 @@ npm i kit-on-lambda aws-cdk aws-cdk-lib constructs
 bun i kit-on-lambda aws-cdk aws-cdk-lib constructs
 ```
 
-## Usage
+To access the raw AWS event and context from inside your SvelteKit handlers, also install:
 
-There are 3 distinct options how you can use this adapter.
+```bash
+npm i @beesolve/lambda-fetch-api
+# or
+bun i @beesolve/lambda-fetch-api
+```
 
-## 1. build with `esbuild` run on Node.js runtime
+## Architecture
 
-This is the default option. Here you can see how you can set up your SvelteKit so it could be deployed with CDK to official Node.js lambda runtime.
+SvelteKit is deployed to AWS Lambda behind CloudFront. Static assets are served from an S3 bucket.
+
+![AWS architecture](./architecture.png)
+
+## Option 1 — build with esbuild, run on Node.js runtime
+
+The default adapter. Uses esbuild to bundle the server and deploys to the official Node.js Lambda runtime.
 
 ```ts
 // svelte.config.js
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import adapter from "kit-on-lambda";
 
-const originUrl = 'https://{distributionId}.cloudfront.net'
+const originUrl = "https://{distributionId}.cloudfront.net";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
-
   kit: {
     adapter: adapter(),
-  },
-  paths: {
-    assets: originUrl,
-  },
-  csrf: {
-    trustedOrigins: [originUrl],
+    paths: {
+      assets: originUrl,
+    },
+    csrf: {
+      trustedOrigins: [originUrl],
+    },
   },
 };
 
@@ -50,119 +64,198 @@ export default config;
 ```
 
 > [!NOTE]
-> It is important to set `origin` to `kit.paths.assets` and `kit.csrf.trustedOrigins`.
-
-
-After you set up your `SvelteKit` you can deploy it with provided CDK constructs. The `SvelteKit` is deployed to AWS Lambda behind CloudFront and uses S3 bucket for static assets and caches.
-
-![AWS architecture](./architecture.png)
+> Set `kit.paths.assets` and `kit.csrf.trustedOrigins` to your CloudFront distribution URL.
 
 ```ts
 // app.ts
-import { SvelteKit } from 'kit-on-lambda/cdk';
-import { App, Stack, type Environment } from 'aws-cdk-lib';
+import { SvelteKit } from "kit-on-lambda/cdk";
+import { App, Stack, type Environment } from "aws-cdk-lib";
 
 const env: Environment = {
-  account: 'your-account-id',
-  region: 'your-prefered-region',
+  account: "your-account-id",
+  region: "your-preferred-region",
 };
 
 const app = new App();
-const stack = new Stack(app, 'YourSite', { env });
+const stack = new Stack(app, "YourSite", { env });
 
-const { handler, distribution } = new SvelteKit(stack, 'SvelteKit', { runtime: "node" });
-
-// here you can add permissions to `handler` function etc
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
+  runtime: "node",
+});
 ```
 
-The above code is recommended to be put to `app.ts` in the root of your repository. After that add following to your `packages.json`:
+Add the CDK script to your `package.json`:
 
 ```json
 {
-  // ...
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "cdk": "cdk --app \"node --experimental-strip-types app.ts\" --profile {your-aws-profile}",
-    // ...
+    "cdk": "cdk --app \"node --experimental-strip-types app.ts\" --profile {your-aws-profile}"
   }
-  // ...
 }
 ```
 
-<details>
-    <summary>If you are using `bun` instead of `node`</summary>
+If you are using `bun` instead of `node`:
 
 ```json
 {
-  // ...
   "scripts": {
     "dev": "bun run --bun --env-file=./.env vite dev",
     "build": "bunx --bun vite build",
-    "cdk": "cdk --app \"bun app.ts\" --profile {your-aws-profile}",
-    // ...
+    "cdk": "cdk --app \"bun app.ts\" --profile {your-aws-profile}"
   }
-  // ...
 }
 ```
 
-</details>
-
-Once you have changed your `package.json` you will be able to build your `SvelteKit` application and deploy it to AWS:
+Deploy:
 
 ```bash
 bun run build
-bun run cdk bootstrap # only needed for the first time
+bun run cdk bootstrap  # only needed the first time
 bun run cdk deploy
 ```
 
-Additionally in official Node.js lambda runtime you can use helpers which are provided by this package for getting AWS Event and Context objects like this:
+By default the Lambda uses `InvokeMode.RESPONSE_STREAM`. To use buffered responses:
+
+```ts
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
+  runtime: "node",
+  invokeMode: InvokeMode.BUFFERED,
+});
+```
+
+### Accessing the AWS event and context (Node.js runtime)
+
+Install `@beesolve/lambda-fetch-api` and use `getAwsEvent()` / `getAwsContext()` from anywhere inside a request handler. These are backed by `AsyncLocalStorage` — no request argument needed.
 
 ```ts
 // hooks.server.ts
 import type { Handle } from "@sveltejs/kit";
 import {
+  getAwsContext,
+  getAwsEvent,
   isAPIGatewayProxyEvent,
   isAPIGatewayProxyEventV2,
-  toAwsContext,
-  toAwsEvent,
-} from "kit-on-lambda/runtime";
+} from "@beesolve/lambda-fetch-api";
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const awsEvent = toAwsEvent(event.request);
-  const awsContext = toAwsContext(event.request);
+  const awsEvent = getAwsEvent();
+  const awsContext = getAwsContext();
 
-  isAPIGatewayProxyEvent(awsEvent);
-  isAPIGatewayProxyEventV2(awsEvent);
+  if (isAPIGatewayProxyEvent(awsEvent)) {
+    // API Gateway v1 (REST API)
+  }
+  if (isAPIGatewayProxyEventV2(awsEvent)) {
+    // API Gateway v2 / Function URL
+  }
+
   awsContext.getRemainingTimeInMillis();
 
   return await resolve(event);
 };
 ```
 
-By default the Lambda is deployed in `InvokeMode.RESPONSE_STREAM` invoke mode which means that the response will be streamed back to the client. If you wish to buffer the response you can change it in the options.
+The type guards `isAPIGatewayProxyEvent` and `isAPIGatewayProxyEventV2` are also re-exported from `kit-on-lambda/runtime` for convenience.
+
+## Option 2 — build with Bun, run on Bun runtime
+
+Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via `@beesolve/lambda-bun-runtime`.
 
 ```ts
-const { handler, distribution } = new SvelteKit(stack, 'SvelteKit', { 
-  runtime: "node",
+// svelte.config.js
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+import adapter from "kit-on-lambda/bun";
+
+const originUrl = "https://{distributionId}.cloudfront.net";
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  preprocess: vitePreprocess(),
+  kit: {
+    adapter: adapter({ runtime: "bun" }),
+    paths: {
+      assets: originUrl,
+    },
+    csrf: {
+      trustedOrigins: [originUrl],
+    },
+  },
+};
+
+export default config;
+```
+
+```ts
+// app.ts
+import { SvelteKit } from "kit-on-lambda/cdk";
+import { App, Stack, type Environment } from "aws-cdk-lib";
+
+const app = new App();
+const stack = new Stack(app, "YourSite", {
+  env: { account: "your-account-id", region: "your-preferred-region" },
+});
+
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
+  runtime: "bun",
+});
+```
+
+By default the Lambda uses `InvokeMode.RESPONSE_STREAM`. To use buffered responses:
+
+```ts
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
+  runtime: "bun",
   invokeMode: InvokeMode.BUFFERED,
 });
 ```
 
-The response streaming is supported only for `node` runtime.
+## Option 3 — build with Bun, run on Node.js runtime
 
-## 2. build with `Bun` run on `Bun` runtime
+Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful when you want Bun's faster build times without requiring a custom Lambda layer.
 
-todo
+```ts
+// svelte.config.js
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+import adapter from "kit-on-lambda/bun";
 
-## 3. build with `Bun` run on `Node.js` runtime
+const originUrl = "https://{distributionId}.cloudfront.net";
 
-todo
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  preprocess: vitePreprocess(),
+  kit: {
+    adapter: adapter({ runtime: "node" }),
+    paths: {
+      assets: originUrl,
+    },
+    csrf: {
+      trustedOrigins: [originUrl],
+    },
+  },
+};
 
+export default config;
+```
 
-# Thank you
+```ts
+// app.ts
+import { SvelteKit } from "kit-on-lambda/cdk";
+import { App, Stack, type Environment } from "aws-cdk-lib";
 
-This package has been inspired by various other libraries. I've adapted some of the code from following ones:
+const app = new App();
+const stack = new Stack(app, "YourSite", {
+  env: { account: "your-account-id", region: "your-preferred-region" },
+});
+
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
+  runtime: "node",
+});
+```
+
+## Thank you
+
+This package has been inspired by various other libraries. Some code has been adapted from:
 
 - [sveltekit-adapter-aws-base](https://github.com/Data-Only-Greater/sveltekit-adapter-aws-base)
 - [nitro aws-lambda preset](https://github.com/nitrojs/nitro/tree/main/src/presets/aws-lambda)

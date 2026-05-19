@@ -1,3 +1,4 @@
+import { asHttpV2Handler } from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
 import { manifest } from "MANIFEST";
 import process from "node:process";
@@ -10,12 +11,10 @@ await server.init({
   read: createReadableStream,
 });
 
-export default {
-  fetch: async (request: Request): Promise<Response> => {
-    return await server.respond(request, {
-      getClientAddress() {
-        return request.headers.get("x-forwarded-for") ?? "";
-      },
-    });
-  },
-};
+export const handler = asHttpV2Handler(async (request: Request) => {
+  return server.respond(request, {
+    getClientAddress() {
+      return request.headers.get("x-forwarded-for") ?? "";
+    },
+  });
+});

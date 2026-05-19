@@ -10,7 +10,7 @@
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
+    "skipLibCheck": true,
   },
-  "include": ["*.ts", "files/**/*.ts", "internal.d.ts", "tmp.js"],
+  "include": ["*.ts", "files/**/*.ts", "internal.d.ts"],
 }

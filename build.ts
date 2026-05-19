@@ -24,6 +24,7 @@ await Promise.all([
       "files/node/handler.ts",
       "files/node/stream.ts",
       "files/bun/handler.ts",
+      "files/bun/stream.ts",
     ],
     external: ["SERVER", "MANIFEST"],
     target: "node",

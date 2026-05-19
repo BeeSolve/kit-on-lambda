@@ -1,68 +1,22 @@
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyEventV2,
-  Context,
-} from "aws-lambda";
+export {
+  isAPIGatewayProxyEvent,
+  isAPIGatewayProxyEventV2,
+  getAwsEvent,
+  getAwsContext,
+  getAwsV1Event,
+  getAwsV2Event,
+} from "@beesolve/lambda-fetch-api";
 
-export function toAwsEvent(
-  request: Request,
-): APIGatewayProxyEvent | APIGatewayProxyEventV2 {
-  const header = request.headers.get("aws-event");
-  if (header == null)
-    throw new MissingAwsEventHeaderError(
-      `Provided request does not contain "aws-event" header.`,
-    );
-
-  return JSON.parse(header);
-}
-
-export function toAwsContext(request: Request): Context {
-  const header = request.headers.get("aws-context");
-  if (header == null)
-    throw new MissingAwsContextHeaderError(
-      `Provided request does not contain "aws-context" header.`,
-    );
-
-  const {
-    serializedAtTimeInMillis,
-    remainingTimeInMillis,
-    ...rest
-  }: Omit<Context, "getRemainingTimeInMillis"> & {
-    serializedAtTimeInMillis: number;
-    remainingTimeInMillis: number;
-  } = JSON.parse(header);
-
-  return {
-    ...rest,
-    getRemainingTimeInMillis: () => {
-      const diff = Date.now() - serializedAtTimeInMillis;
-      return remainingTimeInMillis - diff;
-    },
-  };
-}
-
-export function isAPIGatewayProxyEvent(
-  event: any,
-): event is APIGatewayProxyEvent {
-  return (
-    typeof event.httpMethod === "string" &&
-    typeof event.path === "string" &&
-    typeof event.resource === "string" &&
-    typeof event.requestContext === "object"
+/** @deprecated Use getAwsEvent() from @beesolve/lambda-fetch-api */
+export function toAwsEvent(_request: Request): never {
+  throw new Error(
+    "toAwsEvent is removed. Use getAwsEvent() from @beesolve/lambda-fetch-api instead.",
   );
 }
 
-export function isAPIGatewayProxyEventV2(
-  event: any,
-): event is APIGatewayProxyEventV2 {
-  return (
-    event.version === "2.0" &&
-    typeof event.rawPath === "string" &&
-    typeof event.rawQueryString === "string" &&
-    typeof event.routeKey === "string" &&
-    typeof event.requestContext === "object"
+/** @deprecated Use getAwsContext() from @beesolve/lambda-fetch-api */
+export function toAwsContext(_request: Request): never {
+  throw new Error(
+    "toAwsContext is removed. Use getAwsContext() from @beesolve/lambda-fetch-api instead.",
   );
 }
-
-class MissingAwsEventHeaderError extends Error {}
-class MissingAwsContextHeaderError extends Error {}

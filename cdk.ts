@@ -43,7 +43,7 @@ import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { resolve } from "node:path";
-import { assertUnreachable } from "util.js";
+import { assertUnreachable } from "./util.js";
 
 type BaseProps = {
   /**
@@ -101,6 +101,11 @@ type SvelteKitProps =
       readonly runtime: "bun";
 
       /**
+       * @default InvokeMode.RESPONSE_STREAM
+       */
+      readonly invokeMode?: InvokeMode;
+
+      /**
        * By default Lambda with 1024MB and 10s of timeout is created.
        *
        * You can change any Lambda function options here
@@ -134,10 +139,7 @@ export class SvelteKit extends Construct {
 
     handler.addEnvironment("ORIGIN_TOKEN", originToken);
 
-    const invokeMode =
-      props.runtime === "node"
-        ? (props.invokeMode ?? InvokeMode.RESPONSE_STREAM)
-        : InvokeMode.BUFFERED;
+    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
 
     const url = handler.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
@@ -250,14 +252,12 @@ export class SvelteKit extends Construct {
     buildDirectory: string,
   ) => {
     if (props.runtime === "bun") {
-      const {
-        lambdaProps = {
-          bunLayer: new BunLambdaLayer(this, "BunLayer"),
-        } satisfies Omit<BunFunctionProps, "entrypoint">,
-      } = props;
+      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {
+        bunLayer: new BunLambdaLayer(this, "BunLayer"),
+      } satisfies Omit<BunFunctionProps, "entrypoint"> } = props;
 
       return new BunFunction(this, "Handler", {
-        entrypoint: `${buildDirectory}/server/handler.js`,
+        entrypoint: `${buildDirectory}/server/${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.js`,
         memorySize: 1024,
         timeout: Duration.seconds(10),
         loggingFormat: LoggingFormat.JSON,

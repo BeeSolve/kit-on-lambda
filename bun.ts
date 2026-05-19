@@ -1,7 +1,8 @@
 import type { Adapter, Builder } from "@sveltejs/kit";
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { computeRoutes } from "./util.js";
 
 interface AdapterOptions {
   /**
@@ -124,20 +125,10 @@ export default (options: AdapterOptions = {}): Adapter => {
         });
       }
 
-      const routes = [
-        ...new Set(
-          [...clientFiles, ...prerenderedFiles]
-            .map((x) => {
-              const z = dirname(x);
-              if (z === ".") return x;
-              if (z.includes("/")) return undefined;
-              return `${z}/*`;
-            })
-            .filter(Boolean),
-        ),
-      ];
-
-      writeFileSync(join(out, "routes.json"), JSON.stringify(routes));
+      writeFileSync(
+        join(out, "routes.json"),
+        JSON.stringify(computeRoutes([...clientFiles, ...prerenderedFiles])),
+      );
     },
 
     supports: {
