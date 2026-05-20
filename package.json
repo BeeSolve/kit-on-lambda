@@ -40,6 +40,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "provenance": true
+  },
   "scripts": {
     "test": "bun test",
     "prepublishOnly": "bun --bun run build.ts",
