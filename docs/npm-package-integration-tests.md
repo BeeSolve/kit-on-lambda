@@ -6,9 +6,13 @@ A pattern for repos where the root is the published package and you need integra
 
 ## The problem with local deps
 
-Integration tests typically live alongside the package and need to import it. The naive approach — `"my-package": "file:../.."` — hits a Bun bug: when Bun resolves a `file:` dependency it copies/traverses the entire target directory. If that directory contains nested `package.json` files (e.g. `examples/`), Bun recurses into each, which then point back at `file:../..`, creating an infinite loop.
+Integration tests typically live alongside the package and need to import it. The naive approach — `"my-package": "file:../.."` — has two fatal flaws with Bun:
 
-**The fix: Bun workspaces.**
+1. **Infinite install loop.** When Bun resolves a `file:` dep it copies/traverses the entire target directory. If that directory contains nested `package.json` files (e.g. `examples/`), Bun recurses into each, which then point back at `file:../..`, looping forever. `bun install` never completes.
+
+2. **`dist/` is absent at build time.** Even when the lockfile is frozen and the install succeeds, Bun copies the directory *at install time*. In CI the package is typically built after deps are installed, so `dist/` does not exist yet when the copy is made. When the integration test later tries to import the adapter (e.g. during `vite build`), it finds an empty package with no exports and the build fails.
+
+**The fix: Bun workspaces (preferred) or `link:` (if the package is the repo root).**
 
 ---
 
@@ -74,9 +78,14 @@ If restructuring to `packages/` is not an option, use the `link:` protocol inste
 }
 ```
 
-`link:` creates a symlink in `node_modules/my-package → ../../` without traversing or copying the directory, so the loop never occurs. The linked package's transitive dependencies are resolved from the root's `node_modules` (which the root `bun install` step creates).
+`link:` creates a symlink `node_modules/my-package → ../../` without traversing or copying the directory. This solves both problems:
 
-**Trade-off:** each example still maintains its own `bun.lock`. Regenerating it is instant and loop-free:
+- No infinite loop — Bun just creates a symlink, no directory traversal.
+- No stale `dist/` — the symlink always points at the live root, so `dist/` is present as soon as the build step runs.
+
+The linked package's transitive dependencies are resolved from the root's `node_modules` (which the root `bun install` step creates first).
+
+**Trade-off:** each example maintains its own `bun.lock`, but regenerating it is instant and loop-free:
 
 ```bash
 bun install --cwd examples/infra
@@ -149,6 +158,8 @@ jobs:
 
 ### Workflow (link: approach — separate installs)
 
+Install order matters: root first (creates `node_modules/` that linked examples resolve transitive deps through), then examples, then build. Because `link:` is a live symlink, `dist/` will be present for the test runner even though it's built after the installs.
+
 ```yaml
       - name: Install root dependencies
         run: bun install --frozen-lockfile
@@ -156,10 +167,18 @@ jobs:
       - name: Install example dependencies
         run: |
           bun install --frozen-lockfile --cwd examples/basic
+          bun install --frozen-lockfile --cwd examples/streaming
           bun install --frozen-lockfile --cwd examples/infra
 
       - name: Build package
-        run: bun run build
+        run: bun run prepublishOnly   # creates dist/ that examples resolve through the symlink
+
+      - name: Run integration tests
+        run: bun run integ:deploy-test-destroy
+
+      - name: Cleanup (always)
+        if: always()
+        run: bun run integ:cleanup
 ```
 
 ### Keep action versions current

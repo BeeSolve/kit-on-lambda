@@ -607,15 +607,16 @@ jobs:
       AWS_REGION: eu-central-1
       CI: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_INTEG_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - run: bun install --frozen-lockfile
-      - name: Install example app deps
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+      - name: Install example app dependencies
         run: |
           bun install --frozen-lockfile --cwd examples/basic
           bun install --frozen-lockfile --cwd examples/streaming
@@ -660,7 +661,7 @@ INTEG_TIMESTAMP=manual bunx cdk deploy --all --require-approval never --outputs-
 - [x] `examples/streaming/` — SvelteKit app with `/api/large` returning > 6 MB payload
 - [x] `examples/infra/` — CDK app with three stacks (EsbNode, BunNode, BunBun)
 - [x] `examples/infra/package.json` — CDK deps: `aws-cdk`, `aws-cdk-lib`, `constructs`
-- [x] Each example app `package.json` — `kit-on-lambda` as local file dep (`"kit-on-lambda": "file:../.."`), `@sveltejs/kit`, `vite`
+- [x] Each example app `package.json` — `kit-on-lambda` as local link dep (`"kit-on-lambda": "link:../.."`) — use `link:` not `file:`, see [npm-package-integration-tests.md](./npm-package-integration-tests.md#the-problem-with-local-deps)
 - [x] `test/integration/deploy-destroy.test.ts` — deploy/test/teardown with `bun:test`
 - [x] `test/integration/helpers.ts` — shared fetch utilities
 - [x] `scripts/integ-cleanup.sh` — orphaned stack cleanup
