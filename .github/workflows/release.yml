@@ -39,6 +39,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ""
         run: |
           VERSION=$(node -p "require('./package.json').version")
           PUBLISHED=$(npm view "kit-on-lambda@$VERSION" version 2>/dev/null || echo "")
