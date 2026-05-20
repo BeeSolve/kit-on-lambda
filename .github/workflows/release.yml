@@ -31,11 +31,23 @@ jobs:
       - name: Build
         run: bun run prepublishOnly
 
-      - name: Create Version PR or Publish
+      - name: Open Version PR (when changesets pending)
         uses: changesets/action@v1
         with:
-          publish: bunx changeset publish
           version: bunx changeset version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "kit-on-lambda@$VERSION" version 2>/dev/null || echo "")
+          if [ "$PUBLISHED" = "$VERSION" ]; then
+            echo "v$VERSION already published — skipping"
+          else
+            npm publish --provenance --access public
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            bunx changeset tag
+            git push --tags
+          fi
