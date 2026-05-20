@@ -13,3 +13,4 @@ examples/streaming/build
 
 # CDK output
 examples/infra/cdk.out
+examples/infra/outputs.json
