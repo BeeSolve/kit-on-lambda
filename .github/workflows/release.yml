@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
@@ -38,9 +38,6 @@ jobs:
           version: bunx changeset version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upgrade npm
-        run: npm install -g npm@latest
 
       - name: Publish to npm
         env:
