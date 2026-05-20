@@ -59,7 +59,6 @@
     "constructs": "^10.6.0"
   },
   "devDependencies": {
-    "@aws-sdk/client-lambda": "^3.1050.0",
     "@changesets/cli": "^2.31.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@types/aws-lambda": "^8.10.161",
