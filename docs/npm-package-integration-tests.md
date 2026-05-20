@@ -68,27 +68,43 @@ One `bun install` at the repo root installs everything. In CI, one `bun install 
 
 ## Workaround when the package IS the repo root
 
-If restructuring to `packages/` is not an option, use the `link:` protocol instead of `file:`:
+If restructuring to `packages/` is not an option, use **name-based `link:`** combined with `bun link`.
+
+### Why path-based `link:../..` does NOT work
+
+`"my-package": "link:../.."` looks like it should create a symlink to `../..`, but in Bun it creates `node_modules/my-package → ~/.bun/install` (Bun's global cache *directory*, not your package). Node.js-based tools (Vite, CDK, tsc) cannot resolve the package through this malformed symlink.
+
+### The correct approach: name-based `link:`
+
+**Step 1 — register the package globally once (or in CI):**
+
+```bash
+# Run at the repo root — registers it in ~/.bun/install/global/node_modules/<name> -> /absolute/path
+bun link
+```
+
+**Step 2 — reference by name in each example `package.json`:**
 
 ```json
 {
   "dependencies": {
-    "my-package": "link:../.."
+    "my-package": "link:my-package"
   }
 }
 ```
 
-`link:` creates a symlink `node_modules/my-package → ../../` without traversing or copying the directory. This solves both problems:
+Bun now creates `node_modules/my-package → ../../../` (a proper relative symlink to the repo root) — resolvable by Node.js, Vite, CDK, and any other tool.
 
-- No infinite loop — Bun just creates a symlink, no directory traversal.
+This solves both `file:` problems:
+
+- No infinite loop — Bun creates a symlink instead of copying the directory.
 - No stale `dist/` — the symlink always points at the live root, so `dist/` is present as soon as the build step runs.
-
-The linked package's transitive dependencies are resolved from the root's `node_modules` (which the root `bun install` step creates first).
 
 **Trade-off:** each example maintains its own `bun.lock`, but regenerating it is instant and loop-free:
 
 ```bash
-bun install --cwd examples/infra
+bun link                           # register globally (one-time per machine)
+bun install --cwd examples/infra   # regenerate lockfile
 ```
 
 ---
@@ -158,11 +174,14 @@ jobs:
 
 ### Workflow (link: approach — separate installs)
 
-Install order matters: root first (creates `node_modules/` that linked examples resolve transitive deps through), then examples, then build. Because `link:` is a live symlink, `dist/` will be present for the test runner even though it's built after the installs.
+Install order matters: root first (creates `node_modules/` that linked examples resolve transitive deps through), then register the package globally with `bun link`, then install examples, then build. Because `link:` is a live symlink, `dist/` will be present for the test runner even though it's built after the installs.
 
 ```yaml
       - name: Install root dependencies
         run: bun install --frozen-lockfile
+
+      - name: Register local package globally
+        run: bun link
 
       - name: Install example dependencies
         run: |

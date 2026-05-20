@@ -8,7 +8,7 @@
         "aws-cdk": "^2.1122.0",
         "aws-cdk-lib": "^2.254.0",
         "constructs": "^10.6.0",
-        "kit-on-lambda": "link:../..",
+        "kit-on-lambda": "link:kit-on-lambda",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
@@ -31,7 +31,7 @@
 
     "constructs": ["constructs@10.6.0", "", {}, "sha512-TxHOnBO5zMo/G76ykzGF/wMpEHu257TbWiIxP9K0Yv/+t70UzgBQiTqjkAsWOPC6jW91DzJI0+ehQV6xDRNBuQ=="],
 
-    "kit-on-lambda": ["kit-on-lambda@link:../..", {}],
+    "kit-on-lambda": ["kit-on-lambda@link:kit-on-lambda", {}],
 
     "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 

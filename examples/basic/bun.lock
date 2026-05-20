@@ -5,7 +5,7 @@
     "": {
       "name": "kit-on-lambda-basic-example",
       "dependencies": {
-        "kit-on-lambda": "link:../..",
+        "kit-on-lambda": "link:kit-on-lambda",
       },
       "devDependencies": {
         "@sveltejs/kit": "^2.60.1",
@@ -176,7 +176,7 @@
 
     "is-reference": ["is-reference@3.0.3", "", { "dependencies": { "@types/estree": "^1.0.6" } }, "sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw=="],
 
-    "kit-on-lambda": ["kit-on-lambda@link:../..", {}],
+    "kit-on-lambda": ["kit-on-lambda@link:kit-on-lambda", {}],
 
     "kleur": ["kleur@4.1.5", "", {}, "sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ=="],
 

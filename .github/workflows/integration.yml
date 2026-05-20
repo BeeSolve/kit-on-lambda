@@ -39,6 +39,9 @@ jobs:
       - name: Install root dependencies
         run: bun install --frozen-lockfile
 
+      - name: Register local package globally
+        run: bun link
+
       - name: Install example app dependencies
         run: |
           bun install --frozen-lockfile --cwd examples/basic

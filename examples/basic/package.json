@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "kit-on-lambda": "link:../.."
+    "kit-on-lambda": "link:kit-on-lambda"
   },
   "devDependencies": {
     "@sveltejs/kit": "^2.60.1",
