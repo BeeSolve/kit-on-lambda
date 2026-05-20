@@ -26,12 +26,12 @@ jobs:
       AWS_REGION: eu-central-1
       CI: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_INTEG_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
