@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.4.0
+
+### Minor Changes
+
+- 8eae50d: update lambda-keep-active
+
 ## 0.3.0
 
 ### Minor Changes
