@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.4.1
+
+### Patch Changes
+
+- 39f28e9: Replace bun-dts with tsgo for declaration generation, add oxlint/oxfmt tooling via @beesolve/lint-config, fix CJS interop in CDK dist output
+
 ## 0.4.0
 
 ### Minor Changes
