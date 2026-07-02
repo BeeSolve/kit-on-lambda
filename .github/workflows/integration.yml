@@ -6,10 +6,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'examples/**'
-      - 'test/integration/**'
-      - '*.ts'
-      - 'files/**'
+      - "examples/**"
+      - "test/integration/**"
+      - "*.ts"
+      - "files/**"
 
 concurrency:
   group: integ-${{ github.ref }}

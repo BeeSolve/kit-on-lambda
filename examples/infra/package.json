@@ -1,7 +1,7 @@
 {
   "name": "kit-on-lambda-infra",
-  "private": true,
   "version": "0.0.1",
+  "private": true,
   "type": "module",
   "dependencies": {
     "aws-cdk": "^2.1122.0",

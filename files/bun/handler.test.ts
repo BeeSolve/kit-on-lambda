@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { APIGatewayProxyEventV2, Context } from "aws-lambda";
+
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+  Context,
+} from "aws-lambda";
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
@@ -79,7 +84,7 @@ describe("bun handler", () => {
   it("returns the response status code", async () => {
     mockRespond.mockImplementation(async () => new Response("not found", { status: 404 }));
 
-    const result = await handler(makeEvent(), makeContext()) as any;
+    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(404);
   });
@@ -92,10 +97,10 @@ describe("bun handler", () => {
         }),
     );
 
-    const result = await handler(makeEvent(), makeContext()) as any;
+    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
 
-    expect(result.headers["content-type"]).toBe("text/plain");
-    expect(result.headers["x-custom"]).toBe("value");
+    expect(result.headers?.["content-type"]).toBe("text/plain");
+    expect(result.headers?.["x-custom"]).toBe("value");
   });
 
   it("routes set-cookie to cookies array, not headers", async () => {
@@ -106,9 +111,9 @@ describe("bun handler", () => {
       return res;
     });
 
-    const result = await handler(makeEvent(), makeContext()) as any;
+    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
 
-    expect(result.headers["set-cookie"]).toBeUndefined();
+    expect(result.headers?.["set-cookie"]).toBeUndefined();
     expect(result.cookies).toEqual(["sessionId=abc; Path=/", "theme=dark; Path=/"]);
   });
 
@@ -117,7 +122,7 @@ describe("bun handler", () => {
       async () => new Response("hello world", { headers: { "content-type": "text/plain" } }),
     );
 
-    const result = await handler(makeEvent(), makeContext()) as any;
+    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
 
     expect(result.body).toBe("hello world");
     expect(result.isBase64Encoded).toBeUndefined();
@@ -129,7 +134,7 @@ describe("bun handler", () => {
       async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
     );
 
-    const result = await handler(makeEvent(), makeContext()) as any;
+    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
 
     expect(result.isBase64Encoded).toBe(true);
     expect(result.body).toBe(Buffer.from(bytes).toString("base64"));

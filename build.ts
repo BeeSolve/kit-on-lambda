@@ -1,6 +1,6 @@
-import { build } from "bun";
-import { dts } from "bun-dts";
 import { cp, rm } from "node:fs/promises";
+
+import { build } from "bun";
 
 const outdir = "dist";
 
@@ -17,17 +17,34 @@ await Promise.all([
     minify: false,
     sourcemap: "linked",
     outdir,
-    plugins: [dts()],
   }),
   cp("files", `${outdir}/files`, { recursive: true }),
   build({
     entrypoints: ["cdk.ts"],
-    external: ["aws-cdk", "aws-cdk-lib", "constructs"],
+    external: [
+      "aws-cdk",
+      "aws-cdk-lib",
+      "constructs",
+      "esbuild",
+      "@beesolve/lambda-bun-runtime",
+      "@beesolve/lambda-keep-active",
+    ],
     target: "node",
     minify: false,
     sourcemap: "linked",
     outdir,
-    plugins: [dts()],
   }),
 ]);
 console.timeEnd("build");
+
+console.time("declarations");
+const tsgo = Bun.spawn(["tsgo", "--project", "tsconfig.declarations.json"], {
+  stdout: "inherit",
+  stderr: "inherit",
+});
+const exitCode = await tsgo.exited;
+console.timeEnd("declarations");
+
+if (exitCode !== 0) {
+  process.exit(exitCode);
+}

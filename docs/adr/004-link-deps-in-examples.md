@@ -8,7 +8,7 @@
 `examples/` apps need to import the local `kit-on-lambda` package. The naive `"kit-on-lambda": "file:../.."` has two fatal flaws with Bun:
 
 1. **Infinite install loop** — Bun traverses the entire target directory, recurses into nested `package.json` files, and loops forever.
-2. **Stale `dist/`** — Bun copies the directory at install time; since CI builds the package *after* installing deps, `dist/` is absent when the copy is made.
+2. **Stale `dist/`** — Bun copies the directory at install time; since CI builds the package _after_ installing deps, `dist/` is absent when the copy is made.
 
 ## Decision
 

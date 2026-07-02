@@ -1,8 +1,10 @@
-import type { Adapter, Builder } from "@sveltejs/kit";
-import { build } from "esbuild";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import type { Adapter, Builder } from "@sveltejs/kit";
+import { build } from "esbuild";
+
 import { computeRoutes } from "./util.js";
 
 interface AdapterOptions {
@@ -51,9 +53,7 @@ export default (options: AdapterOptions = {}): Adapter => {
       builder.mkdirp(tmp);
 
       builder.log.minor("Copying assets");
-      const clientFiles = builder.writeClient(
-        `${out}/client${builder.config.kit.paths.base}`,
-      );
+      const clientFiles = builder.writeClient(`${out}/client${builder.config.kit.paths.base}`);
       const prerenderedFiles = builder.writePrerendered(
         `${out}/prerendered${builder.config.kit.paths.base}`,
       );
@@ -80,9 +80,7 @@ export default (options: AdapterOptions = {}): Adapter => {
       );
 
       const substitute = (src: string) =>
-        src
-          .replaceAll('"SERVER"', '"./index.js"')
-          .replaceAll('"MANIFEST"', '"./manifest.js"');
+        src.replaceAll('"SERVER"', '"./index.js"').replaceAll('"MANIFEST"', '"./manifest.js"');
 
       writeFileSync(
         `${tmp}/handler.ts`,
@@ -128,10 +126,7 @@ export default (options: AdapterOptions = {}): Adapter => {
         },
       });
 
-      writeFileSync(
-        `${out}/server/package.json`,
-        JSON.stringify({ type: "module" }),
-      );
+      writeFileSync(`${out}/server/package.json`, JSON.stringify({ type: "module" }));
 
       if (builder.hasServerInstrumentationFile?.()) {
         builder.instrument?.({

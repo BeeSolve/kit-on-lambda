@@ -1,8 +1,8 @@
-import {
-  BunFunction,
-  BunFunctionProps,
-  BunLambdaLayer,
-} from "@beesolve/lambda-bun-runtime";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
+import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
@@ -10,7 +10,6 @@ import {
   CachePolicy,
   Function as CloudfrontFunction,
   Distribution,
-  DistributionProps,
   FunctionCode,
   FunctionEventType,
   FunctionRuntime,
@@ -19,30 +18,26 @@ import {
   PriceClass,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
-import {
-  FunctionUrlOrigin,
-  HttpOrigin,
-} from "aws-cdk-lib/aws-cloudfront-origins";
+import type { DistributionProps } from "aws-cdk-lib/aws-cloudfront";
+import { FunctionUrlOrigin, HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { ArnPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
   Code,
-  Function,
   FunctionUrlAuthType,
   InvokeMode,
   LoggingFormat,
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
-import {
-  NodejsFunction,
-  NodejsFunctionProps,
-} from "aws-cdk-lib/aws-lambda-nodejs";
+import type { Function } from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import type { NodejsFunctionProps } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
-import { resolve } from "node:path";
+
 import { assertUnreachable } from "./util.js";
 
 type BaseProps = {
@@ -117,11 +112,7 @@ export class SvelteKit extends Construct {
   readonly distribution: Distribution;
   readonly handler: Function;
 
-  constructor(
-    scope: Construct,
-    id: string,
-    props: SvelteKitProps = { runtime: "node" },
-  ) {
+  constructor(scope: Construct, id: string, props: SvelteKitProps = { runtime: "node" }) {
     super(scope, id);
 
     const { buildDirectory = resolve(`./build`), distributionProps } = props;
@@ -219,18 +210,17 @@ export class SvelteKit extends Construct {
       ...distributionProps,
     });
 
-    import(`${buildDirectory}/routes.json`, {
-      with: { type: "json" },
-    }).then(({ default: routes }: { default: string[] }) => {
-      routes.forEach((route) => {
-        distribution.addBehavior(route, s3Origin, {
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-          originRequestPolicy: OriginRequestPolicy.USER_AGENT_REFERER_HEADERS,
-          cachePolicy: CachePolicy.CACHING_OPTIMIZED,
-        });
+    const routes: Array<string> = JSON.parse(
+      readFileSync(resolve(buildDirectory, "routes.json"), "utf-8"),
+    );
+    for (const route of routes) {
+      distribution.addBehavior(route, s3Origin, {
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        originRequestPolicy: OriginRequestPolicy.USER_AGENT_REFERER_HEADERS,
+        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
       });
-    });
+    }
 
     new BucketDeployment(this, "Deployment", {
       destinationBucket: bucket,
@@ -247,14 +237,14 @@ export class SvelteKit extends Construct {
     this.handler = handler;
   }
 
-  private readonly toHandler = (
-    props: SvelteKitProps,
-    buildDirectory: string,
-  ) => {
+  private readonly toHandler = (props: SvelteKitProps, buildDirectory: string) => {
     if (props.runtime === "bun") {
-      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {
-        bunLayer: new BunLambdaLayer(this, "BunLayer"),
-      } satisfies Omit<BunFunctionProps, "entrypoint"> } = props;
+      const {
+        invokeMode = InvokeMode.RESPONSE_STREAM,
+        lambdaProps = {
+          bunLayer: new BunLambdaLayer(this, "BunLayer"),
+        } satisfies Omit<BunFunctionProps, "entrypoint">,
+      } = props;
 
       return new BunFunction(this, "Handler", {
         entrypoint: `${buildDirectory}/server/${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.js`,
@@ -265,8 +255,7 @@ export class SvelteKit extends Construct {
       });
     }
     if (props.runtime === "node") {
-      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {} } =
-        props;
+      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {} } = props;
 
       const { logGroup, ...rest } = lambdaProps;
 

@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { APIGatewayProxyEvent, APIGatewayProxyEventV2, Context } from "aws-lambda";
+
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResult,
+  APIGatewayProxyStructuredResultV2,
+  Context,
+} from "aws-lambda";
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
@@ -98,7 +105,7 @@ describe("node handler", () => {
     it("returns the response status code", async () => {
       mockRespond.mockImplementation(async () => new Response("not found", { status: 404 }));
 
-      const result = await handler(makeV1Event(), makeContext()) as any;
+      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
 
       expect(result.statusCode).toBe(404);
     });
@@ -111,10 +118,10 @@ describe("node handler", () => {
           }),
       );
 
-      const result = await handler(makeV1Event(), makeContext());
+      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
 
-      expect((result as any).headers["content-type"]).toBe("text/plain");
-      expect((result as any).headers["x-custom"]).toBe("value");
+      expect(result.headers?.["content-type"]).toBe("text/plain");
+      expect(result.headers?.["x-custom"]).toBe("value");
     });
 
     it("routes set-cookie to multiValueHeaders, not headers", async () => {
@@ -125,9 +132,9 @@ describe("node handler", () => {
         return res;
       });
 
-      const result = await handler(makeV1Event(), makeContext()) as any;
+      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
 
-      expect(result.headers["set-cookie"]).toBeUndefined();
+      expect(result.headers?.["set-cookie"]).toBeUndefined();
       expect(result.multiValueHeaders?.["set-cookie"]).toEqual([
         "sessionId=abc; Path=/",
         "theme=dark; Path=/",
@@ -139,10 +146,10 @@ describe("node handler", () => {
         async () => new Response("hello world", { headers: { "content-type": "text/plain" } }),
       );
 
-      const result = await handler(makeV1Event(), makeContext()) as any;
+      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
 
       expect(result.body).toBe("hello world");
-      expect((result as any).isBase64Encoded).toBeUndefined();
+      expect(result.isBase64Encoded).toBeUndefined();
     });
 
     it("base64-encodes binary responses", async () => {
@@ -151,7 +158,7 @@ describe("node handler", () => {
         async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
       );
 
-      const result = await handler(makeV1Event(), makeContext()) as any;
+      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
 
       expect(result.isBase64Encoded).toBe(true);
       expect(result.body).toBe(Buffer.from(bytes).toString("base64"));
@@ -162,7 +169,10 @@ describe("node handler", () => {
     it("returns the response status code", async () => {
       mockRespond.mockImplementation(async () => new Response(null, { status: 204 }));
 
-      const result = await handler(makeV2Event(), makeContext()) as any;
+      const result = (await handler(
+        makeV2Event(),
+        makeContext(),
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(204);
     });
@@ -174,9 +184,12 @@ describe("node handler", () => {
         return res;
       });
 
-      const result = await handler(makeV2Event(), makeContext()) as any;
+      const result = (await handler(
+        makeV2Event(),
+        makeContext(),
+      )) as APIGatewayProxyStructuredResultV2;
 
-      expect(result.headers["set-cookie"]).toBeUndefined();
+      expect(result.headers?.["set-cookie"]).toBeUndefined();
       expect(result.cookies).toEqual(["sessionId=abc; Path=/"]);
     });
 
@@ -186,7 +199,10 @@ describe("node handler", () => {
         async () => new Response(bytes, { headers: { "content-type": "image/gif" } }),
       );
 
-      const result = await handler(makeV2Event(), makeContext()) as any;
+      const result = (await handler(
+        makeV2Event(),
+        makeContext(),
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.isBase64Encoded).toBe(true);
       expect(result.body).toBe(Buffer.from(bytes).toString("base64"));

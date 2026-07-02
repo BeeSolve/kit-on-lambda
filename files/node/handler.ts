@@ -1,3 +1,12 @@
+import process from "node:process";
+
+import {
+  awsRequest,
+  awsResponseBody,
+  awsResponseHeaders,
+  isAPIGatewayProxyEvent,
+  runWithAwsContext,
+} from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
 import type {
   APIGatewayProxyEvent,
@@ -6,15 +15,7 @@ import type {
   APIGatewayProxyResultV2,
   Context,
 } from "aws-lambda";
-import {
-  awsRequest,
-  awsResponseBody,
-  awsResponseHeaders,
-  isAPIGatewayProxyEvent,
-  runWithAwsContext,
-} from "@beesolve/lambda-fetch-api";
 import { manifest } from "MANIFEST";
-import process from "node:process";
 import { Server } from "SERVER";
 
 const server = new Server(manifest);
@@ -39,10 +40,7 @@ export async function handler(
 
     return {
       statusCode: response.status,
-      ...awsResponseHeaders(
-        response,
-        isAPIGatewayProxyEvent(event) ? "v1" : "v2",
-      ),
+      ...awsResponseHeaders(response, isAPIGatewayProxyEvent(event) ? "v1" : "v2"),
       ...(await awsResponseBody(response)),
     };
   });

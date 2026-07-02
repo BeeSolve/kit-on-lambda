@@ -1,0 +1,15 @@
+{
+  "trailingComma": "all",
+  "semi": true,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "printWidth": 100,
+  "arrowParens": "always",
+  "sortImports": {
+    "groups": ["builtin", "external", ["internal", "subpath"], ["parent", "sibling", "index"]],
+    "internalPattern": ["@beesolve/*"],
+    "newlinesBetween": true,
+    "ignoreCase": true
+  },
+  "sortPackageJson": true
+}

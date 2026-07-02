@@ -1,13 +1,10 @@
 import { dirname } from "node:path";
 
-export function assertUnreachable(
-  value: never,
-  message = JSON.stringify(value),
-): never {
+export function assertUnreachable(value: never, message = JSON.stringify(value)): never {
   throw Error("An unreachable state reached!\n" + message);
 }
 
-export function computeRoutes(files: string[]): string[] {
+export function computeRoutes(files: Array<string>): Array<string> {
   return [
     ...new Set(
       files

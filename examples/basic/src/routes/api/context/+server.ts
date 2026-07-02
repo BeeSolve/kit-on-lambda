@@ -1,7 +1,7 @@
-import { json } from '@sveltejs/kit'
-import { getAwsEvent } from '@beesolve/lambda-fetch-api'
+import { getAwsEvent } from "@beesolve/lambda-fetch-api";
+import { json } from "@sveltejs/kit";
 
 export function GET() {
-  const event = getAwsEvent()
-  return json(event)
+  const event = getAwsEvent();
+  return json(event);
 }

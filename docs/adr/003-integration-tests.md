@@ -7,11 +7,11 @@
 
 Unit tests cover individual handlers but cannot verify end-to-end behaviour: CloudFront routing, S3 static asset delivery, Lambda cold starts, cookie passthrough, or runtime-specific quirks. There are three distinct adapter/runtime combinations that need coverage:
 
-| # | Bundler | Lambda runtime |
-|---|---------|----------------|
-| 1 `EsbNode` | esbuild | Node.js 24 |
-| 2 `BunNode` | Bun | Node.js 24 |
-| 3 `BunBun` | Bun | Bun (custom layer) |
+| #           | Bundler | Lambda runtime     |
+| ----------- | ------- | ------------------ |
+| 1 `EsbNode` | esbuild | Node.js 24         |
+| 2 `BunNode` | Bun     | Node.js 24         |
+| 3 `BunBun`  | Bun     | Bun (custom layer) |
 
 ## Decision
 

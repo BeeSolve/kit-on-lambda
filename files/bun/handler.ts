@@ -1,7 +1,8 @@
+import process from "node:process";
+
 import { asHttpV2Handler } from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
 import { manifest } from "MANIFEST";
-import process from "node:process";
 import { Server } from "SERVER";
 
 const server = new Server(manifest);

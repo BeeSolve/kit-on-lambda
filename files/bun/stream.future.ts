@@ -1,3 +1,5 @@
+import process from "node:process";
+
 // Streaming implementation for Bun runtime.
 // Disabled until @beesolve/lambda-bun-runtime implements the Lambda
 // custom-runtime streaming protocol in its runtime.js bootstrap.
@@ -5,7 +7,6 @@
 import { asResponseStreamHandler } from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
 import { manifest } from "MANIFEST";
-import process from "node:process";
 import { Server } from "SERVER";
 
 const server = new Server(manifest);

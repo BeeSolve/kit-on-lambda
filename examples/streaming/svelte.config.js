@@ -1,3 +1,3 @@
-import adapter from 'kit-on-lambda/bun'
+import adapter from "kit-on-lambda/bun";
 
-export default { kit: { adapter: adapter({ runtime: 'bun' }) } }
+export default { kit: { adapter: adapter({ runtime: "bun" }) } };

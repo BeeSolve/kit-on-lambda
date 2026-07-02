@@ -1,6 +1,6 @@
 import { expect, it, mock } from "bun:test";
 
-(globalThis as any).awslambda = {
+(globalThis as unknown as Record<string, unknown>).awslambda = {
   streamifyResponse: (fn: unknown) => fn,
   HttpResponseStream: { from: (stream: unknown) => stream },
 };

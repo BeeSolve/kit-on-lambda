@@ -1,5 +1,5 @@
-import { redirect } from '@sveltejs/kit'
+import { redirect } from "@sveltejs/kit";
 
 export function GET() {
-  redirect(302, '/')
+  redirect(302, "/");
 }

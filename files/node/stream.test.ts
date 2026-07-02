@@ -1,7 +1,7 @@
 import { expect, it, mock } from "bun:test";
 
 // awslambda is a Lambda runtime global; stub it for the test environment
-(globalThis as any).awslambda = {
+(globalThis as unknown as Record<string, unknown>).awslambda = {
   streamifyResponse: (fn: unknown) => fn,
   HttpResponseStream: { from: (stream: unknown) => stream },
 };

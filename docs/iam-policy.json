@@ -4,50 +4,37 @@
     {
       "Sid": "CloudFormation",
       "Effect": "Allow",
-      "Action": [
-        "cloudformation:*"
-      ],
+      "Action": ["cloudformation:*"],
       "Resource": "arn:aws:cloudformation:*:ACCOUNT_ID:stack/KitOnLambdaInteg-*/*"
     },
     {
       "Sid": "CloudFormationList",
       "Effect": "Allow",
-      "Action": [
-        "cloudformation:ListStacks",
-        "cloudformation:DescribeStacks"
-      ],
+      "Action": ["cloudformation:ListStacks", "cloudformation:DescribeStacks"],
       "Resource": "*"
     },
     {
       "Sid": "Lambda",
       "Effect": "Allow",
-      "Action": [
-        "lambda:*"
-      ],
+      "Action": ["lambda:*"],
       "Resource": "*"
     },
     {
       "Sid": "S3",
       "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
+      "Action": ["s3:*"],
       "Resource": "*"
     },
     {
       "Sid": "CloudFront",
       "Effect": "Allow",
-      "Action": [
-        "cloudfront:*"
-      ],
+      "Action": ["cloudfront:*"],
       "Resource": "*"
     },
     {
       "Sid": "SecretsManager",
       "Effect": "Allow",
-      "Action": [
-        "secretsmanager:*"
-      ],
+      "Action": ["secretsmanager:*"],
       "Resource": "arn:aws:secretsmanager:*:ACCOUNT_ID:secret:*"
     },
     {
@@ -73,17 +60,13 @@
     {
       "Sid": "SSM",
       "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter"
-      ],
+      "Action": ["ssm:GetParameter"],
       "Resource": "arn:aws:ssm:*:ACCOUNT_ID:parameter/cdk-bootstrap/*"
     },
     {
       "Sid": "CDKAssetsBucket",
       "Effect": "Allow",
-      "Action": [
-        "sts:AssumeRole"
-      ],
+      "Action": ["sts:AssumeRole"],
       "Resource": "arn:aws:iam::ACCOUNT_ID:role/cdk-*"
     }
   ]

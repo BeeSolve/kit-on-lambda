@@ -7,11 +7,11 @@ SvelteKit adapter for AWS Lambda — deploy to Node.js or Bun runtimes, bundled 
 
 Supports three deployment configurations:
 
-| Option | Build tool | Lambda runtime |
-|--------|------------|----------------|
-| 1 (default) | esbuild | Node.js |
-| 2 | Bun | Bun (custom layer) |
-| 3 | Bun | Node.js |
+| Option      | Build tool | Lambda runtime     |
+| ----------- | ---------- | ------------------ |
+| 1 (default) | esbuild    | Node.js            |
+| 2           | Bun        | Bun (custom layer) |
+| 3           | Bun        | Node.js            |
 
 ## Installation
 
