@@ -40,8 +40,6 @@ bun i @beesolve/lambda-fetch-api
 
 SvelteKit is deployed to AWS Lambda behind CloudFront. Static assets are served from an S3 bucket.
 
-![AWS architecture](./architecture.png)
-
 ### Function URL origin (default)
 
 ```mermaid
