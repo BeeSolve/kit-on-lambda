@@ -16,6 +16,7 @@ function describeLocal(label: string, fn: () => void) {
 interface StackOutputs {
   EsbNodeUrl: string;
   BunNodeUrl: string;
+  HttpApiNodeUrl: string;
 }
 
 let outputs: StackOutputs;
@@ -26,12 +27,13 @@ if (runLocal) {
       buildApp("basic", { ADAPTER_TYPE: "esb", ADAPTER_OUT: "build-esb" });
       buildApp("basic", { ADAPTER_TYPE: "bun", ADAPTER_OUT: "build-bun" });
 
-      const [esbUrl, bunUrl] = await Promise.all([
+      const [esbUrl, bunUrl, httpApiUrl] = await Promise.all([
         deployLocalLambda("local-esb-node", join(examplesDir, "basic/build-esb/server")),
         deployLocalLambda("local-bun-node", join(examplesDir, "basic/build-bun/server")),
+        deployLocalLambda("local-httpapi-node", join(examplesDir, "basic/build-esb/server")),
       ]);
 
-      outputs = { EsbNodeUrl: esbUrl, BunNodeUrl: bunUrl };
+      outputs = { EsbNodeUrl: esbUrl, BunNodeUrl: bunUrl, HttpApiNodeUrl: httpApiUrl };
     },
     10 * 60 * 1000,
   );
@@ -86,3 +88,7 @@ function basicSuiteLocal(label: string, getUrl: () => string) {
 
 basicSuiteLocal("Config 1: esbuild + Node.js", () => outputs.EsbNodeUrl);
 basicSuiteLocal("Config 2: bun bundler + Node.js", () => outputs.BunNodeUrl);
+basicSuiteLocal(
+  "Config 3: HTTP API Gateway + Node.js (buffered handler)",
+  () => outputs.HttpApiNodeUrl,
+);

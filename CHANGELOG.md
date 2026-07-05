@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.5.0
+
+### Minor Changes
+
+- Add SvelteKitHttpApi construct for deploying SvelteKit behind HTTP API Gateway with Lambda authorizer support. Existing SvelteKitFunctionUrl (aliased as SvelteKit) remains unchanged.
+
 ## 0.4.1
 
 ### Patch Changes

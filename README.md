@@ -5,7 +5,14 @@
 
 SvelteKit adapter for AWS Lambda — deploy to Node.js or Bun runtimes, bundled with esbuild or Bun, behind CloudFront.
 
-Supports three deployment configurations:
+Supports two origin modes:
+
+| Origin mode      | Streaming | Lambda authorizer | Use case                        |
+| ---------------- | --------- | ----------------- | ------------------------------- |
+| Function URL     | ✅        | ❌                | Default, best for most apps     |
+| HTTP API Gateway | ❌        | ✅                | Apps needing gateway-level auth |
+
+And three build/runtime configurations:
 
 | Option      | Build tool | Lambda runtime     |
 | ----------- | ---------- | ------------------ |
@@ -34,6 +41,27 @@ bun i @beesolve/lambda-fetch-api
 SvelteKit is deployed to AWS Lambda behind CloudFront. Static assets are served from an S3 bucket.
 
 ![AWS architecture](./architecture.png)
+
+### Function URL origin (default)
+
+```mermaid
+graph LR
+    Client --> CloudFront
+    CloudFront -->|static assets| S3[S3 Bucket]
+    CloudFront -->|dynamic requests| FnUrl[Function URL]
+    FnUrl --> Lambda[Lambda - SvelteKit]
+```
+
+### HTTP API Gateway origin
+
+```mermaid
+graph LR
+    Client --> CloudFront
+    CloudFront -->|static assets| S3[S3 Bucket]
+    CloudFront -->|dynamic requests| APIGW[HTTP API Gateway]
+    APIGW -->|authorizer| AuthFn[Authorizer Lambda]
+    APIGW --> Lambda[Lambda - SvelteKit]
+```
 
 ## Option 1 — build with esbuild, run on Node.js runtime
 
@@ -250,6 +278,49 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
   runtime: "node",
 });
 ```
+
+## HTTP API Gateway origin mode
+
+Use `SvelteKitHttpApi` when you need a Lambda authorizer at the gateway level (e.g., for session validation). This mode uses HTTP API Gateway as the CloudFront origin instead of a Function URL.
+
+> [!NOTE]
+> Response streaming is not available with HTTP API Gateway. The Lambda always uses the buffered handler.
+
+```ts
+// app.ts
+import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
+import { App, Stack, type Environment } from "aws-cdk-lib";
+
+const app = new App();
+const stack = new Stack(app, "YourSite", {
+  env: { account: "your-account-id", region: "your-preferred-region" },
+});
+
+const { handler, distribution, httpApi } = new SvelteKitHttpApi(stack, "SvelteKit", {
+  runtime: "node",
+});
+```
+
+### With an existing HTTP API and authorizer
+
+Pass an existing `HttpApi` and `IHttpRouteAuthorizer` to attach the SvelteKit Lambda to an already-configured gateway:
+
+```ts
+import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
+import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpLambdaAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
+
+const api = new HttpApi(stack, "Api");
+const authorizer = new HttpLambdaAuthorizer("Auth", authorizerFunction);
+
+const { handler, distribution } = new SvelteKitHttpApi(stack, "SvelteKit", {
+  runtime: "node",
+  httpApi: api,
+  authorizer,
+});
+```
+
+The construct adds catch-all routes (`ANY /` and `ANY /{proxy+}`) with the authorizer attached. The authorizer context is accessible via `getAwsEvent()` in your SvelteKit handlers.
 
 ## Thank you
 

@@ -5,6 +5,7 @@ import { App } from "aws-cdk-lib";
 
 import { BasicBunNodeStack } from "../lib/basic-bun-node-stack.js";
 import { BasicEsbNodeStack } from "../lib/basic-esb-node-stack.js";
+import { BasicHttpApiNodeStack } from "../lib/basic-httpapi-node-stack.js";
 import { LocalNodeStack } from "../lib/local-node-stack.js";
 import { StreamingBunBunStack } from "../lib/streaming-bun-bun-stack.js";
 
@@ -25,5 +26,6 @@ if (process.env.LOCAL_INTEG) {
   const ts = process.env.INTEG_TIMESTAMP ?? Date.now().toString();
   new BasicEsbNodeStack(app, `KitOnLambdaInteg-EsbNode-${ts}`, { env });
   new BasicBunNodeStack(app, `KitOnLambdaInteg-BunNode-${ts}`, { env });
+  new BasicHttpApiNodeStack(app, `KitOnLambdaInteg-HttpApiNode-${ts}`, { env });
   new StreamingBunBunStack(app, `KitOnLambdaInteg-BunBun-${ts}`, { env });
 }

@@ -17,6 +17,7 @@ function describeInteg(label: string, fn: () => void) {
 interface StackOutputs {
   EsbNodeUrl: string;
   BunNodeUrl: string;
+  HttpApiNodeUrl: string;
   BunBunUrl: string;
 }
 
@@ -36,6 +37,7 @@ if (runInteg) {
       outputs = {
         EsbNodeUrl: raw[`KitOnLambdaInteg-EsbNode-${ts}`].DistributionUrl,
         BunNodeUrl: raw[`KitOnLambdaInteg-BunNode-${ts}`].DistributionUrl,
+        HttpApiNodeUrl: raw[`KitOnLambdaInteg-HttpApiNode-${ts}`].DistributionUrl,
         BunBunUrl: raw[`KitOnLambdaInteg-BunBun-${ts}`].DistributionUrl,
       };
     },
@@ -104,6 +106,7 @@ function basicSuite(label: string, getUrl: () => string) {
 basicSuite("Config 1: esbuild + Node.js", () => outputs.EsbNodeUrl);
 basicSuite("Config 2: bun bundler + Node.js", () => outputs.BunNodeUrl);
 basicSuite("Config 3: bun bundler + Bun", () => outputs.BunBunUrl);
+basicSuite("Config 4: HTTP API Gateway + Node.js", () => outputs.HttpApiNodeUrl);
 
 describe.skip("Config 3: streaming-specific (disabled — awaiting @beesolve/lambda-bun-runtime streaming support)", () => {
   test("large payload (>6 MB) is returned without error", async () => {
