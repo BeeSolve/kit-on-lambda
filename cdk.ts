@@ -5,8 +5,7 @@ import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
 import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
-import type { IHttpRouteAuthorizer } from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
+import type { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import type { BehaviorOptions, DistributionProps, IOrigin } from "aws-cdk-lib/aws-cloudfront";
 import {
@@ -116,8 +115,7 @@ export class SvelteKitFunctionUrl extends Construct {
 type SvelteKitHttpApiProps =
   | (BaseProps & {
       readonly runtime: "node";
-      readonly httpApi?: HttpApi;
-      readonly authorizer?: IHttpRouteAuthorizer;
+      readonly httpApi: HttpApi;
       readonly lambdaProps?: Omit<
         NodejsFunctionProps,
         "entrypoint" | "bundling" | "entry" | "code" | "handler"
@@ -125,8 +123,7 @@ type SvelteKitHttpApiProps =
     })
   | (BaseProps & {
       readonly runtime: "bun";
-      readonly httpApi?: HttpApi;
-      readonly authorizer?: IHttpRouteAuthorizer;
+      readonly httpApi: HttpApi;
       readonly lambdaProps?: Omit<BunFunctionProps, "entrypoint">;
     });
 
@@ -134,6 +131,7 @@ export class SvelteKitHttpApi extends Construct {
   readonly distribution: Distribution;
   readonly handler: Function;
   readonly httpApi: HttpApi;
+  readonly integration: HttpLambdaIntegration;
 
   constructor(scope: Construct, id: string, props: SvelteKitHttpApiProps) {
     super(scope, id);
@@ -144,22 +142,8 @@ export class SvelteKitHttpApi extends Construct {
 
     keepActive({ scope: this, handler, warmer: props.warmer });
 
-    const api = props.httpApi ?? new HttpApi(this, "HttpApi");
+    const api = props.httpApi;
     const integration = new HttpLambdaIntegration("LambdaIntegration", handler);
-
-    api.addRoutes({
-      path: "/{proxy+}",
-      methods: [HttpMethod.ANY],
-      integration,
-      authorizer: props.authorizer,
-    });
-
-    api.addRoutes({
-      path: "/",
-      methods: [HttpMethod.ANY],
-      integration,
-      authorizer: props.authorizer,
-    });
 
     const domain = `${api.httpApiId}.execute-api.${handler.stack.region}.amazonaws.com`;
     const origin = new HttpOrigin(domain, {
@@ -169,6 +153,7 @@ export class SvelteKitHttpApi extends Construct {
     this.distribution = createDistribution({ scope: this, origin, props, buildDirectory });
     this.handler = handler;
     this.httpApi = api;
+    this.integration = integration;
   }
 }
 

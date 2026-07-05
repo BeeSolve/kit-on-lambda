@@ -7,9 +7,7 @@ import { join } from "node:path";
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-import { InvokeMode, Runtime } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { InvokeMode } from "aws-cdk-lib/aws-lambda";
 
 import { SvelteKit, SvelteKitFunctionUrl, SvelteKitHttpApi } from "../cdk.js";
 
@@ -179,21 +177,7 @@ describe("SvelteKitFunctionUrl", () => {
 });
 
 describe("SvelteKitHttpApi", () => {
-  it("creates an HTTP API Gateway when none is provided", () => {
-    const app = new App();
-    const stack = new Stack(app, "Test");
-
-    new SvelteKitHttpApi(stack, "Site", {
-      runtime: "node",
-      buildDirectory,
-    });
-
-    const template = Template.fromStack(stack);
-
-    template.resourceCountIs("AWS::ApiGatewayV2::Api", 1);
-  });
-
-  it("uses an existing HTTP API when provided", () => {
+  it("uses the provided HTTP API for CloudFront origin", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
@@ -210,56 +194,32 @@ describe("SvelteKitHttpApi", () => {
     template.resourceCountIs("AWS::ApiGatewayV2::Api", 1);
   });
 
-  it("creates catch-all routes on the API", () => {
+  it("does not add routes to the API", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
     const template = Template.fromStack(stack);
 
-    template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
-      RouteKey: "ANY /{proxy+}",
-    });
-    template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
-      RouteKey: "ANY /",
-    });
-  });
-
-  it("attaches an authorizer to routes when provided", () => {
-    const app = new App();
-    const stack = new Stack(app, "Test");
-
-    const authorizerFn = new NodejsFunction(stack, "AuthFn", {
-      runtime: Runtime.NODEJS_24_X,
-      handler: "index.handler",
-      code: require("aws-cdk-lib/aws-lambda").Code.fromInline("exports.handler = () => {}"),
-    });
-
-    const authorizer = new HttpLambdaAuthorizer("Authorizer", authorizerFn);
-
-    new SvelteKitHttpApi(stack, "Site", {
-      runtime: "node",
-      authorizer,
-      buildDirectory,
-    });
-
-    const template = Template.fromStack(stack);
-
-    template.hasResourceProperties("AWS::ApiGatewayV2::Authorizer", {
-      AuthorizerType: "REQUEST",
-    });
+    template.resourceCountIs("AWS::ApiGatewayV2::Route", 0);
   });
 
   it("does not create a Function URL", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
@@ -272,8 +232,11 @@ describe("SvelteKitHttpApi", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
@@ -286,8 +249,11 @@ describe("SvelteKitHttpApi", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
@@ -302,8 +268,11 @@ describe("SvelteKitHttpApi", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
@@ -312,18 +281,22 @@ describe("SvelteKitHttpApi", () => {
     template.resourceCountIs("AWS::CloudFront::Distribution", 1);
   });
 
-  it("exposes distribution, handler, and httpApi properties", () => {
+  it("exposes distribution, handler, httpApi, and integration properties", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
+    const existingApi = new HttpApi(stack, "ExistingApi");
+
     const site = new SvelteKitHttpApi(stack, "Site", {
       runtime: "node",
+      httpApi: existingApi,
       buildDirectory,
     });
 
     expect(site.distribution).toBeDefined();
     expect(site.handler).toBeDefined();
     expect(site.httpApi).toBeDefined();
+    expect(site.integration).toBeDefined();
   });
 });
 
