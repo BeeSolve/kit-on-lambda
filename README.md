@@ -287,6 +287,7 @@ Use `SvelteKitHttpApi` when you need a Lambda authorizer at the gateway level (e
 ```ts
 // app.ts
 import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
+import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { App, Stack, type Environment } from "aws-cdk-lib";
 
 const app = new App();
@@ -294,31 +295,55 @@ const stack = new Stack(app, "YourSite", {
   env: { account: "your-account-id", region: "your-preferred-region" },
 });
 
-const { handler, distribution, httpApi } = new SvelteKitHttpApi(stack, "SvelteKit", {
-  runtime: "node",
-});
-```
-
-### With an existing HTTP API and authorizer
-
-Pass an existing `HttpApi` and `IHttpRouteAuthorizer` to attach the SvelteKit Lambda to an already-configured gateway:
-
-```ts
-import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
-import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-
 const api = new HttpApi(stack, "Api");
-const authorizer = new HttpLambdaAuthorizer("Auth", authorizerFunction);
 
-const { handler, distribution } = new SvelteKitHttpApi(stack, "SvelteKit", {
+const { handler, distribution, integration } = new SvelteKitHttpApi(stack, "SvelteKit", {
   runtime: "node",
   httpApi: api,
-  authorizer,
+});
+
+// Add catch-all routes — you control the routing and authorizer
+api.addRoutes({
+  path: "/{proxy+}",
+  methods: [HttpMethod.ANY],
+  integration,
+});
+api.addRoutes({
+  path: "/",
+  methods: [HttpMethod.ANY],
+  integration,
 });
 ```
 
-The construct adds catch-all routes (`ANY /` and `ANY /{proxy+}`) with the authorizer attached. The authorizer context is accessible via `getAwsEvent()` in your SvelteKit handlers.
+### With a service that manages the authorizer
+
+When using `@beesolve/auth-service` or similar, the service can wire up routing with its internal authorizer:
+
+```ts
+import { Auth } from "@beesolve/auth-service/cdk";
+import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
+
+const auth = new Auth(stack, "Auth", { ... });
+
+const site = new SvelteKitHttpApi(stack, "SvelteKit", {
+  runtime: "node",
+  httpApi: auth.api,
+  buildDirectory: resolve("./site/build"),
+});
+
+// Auth adds catch-all routes with its session authorizer
+auth.protect(site.integration);
+
+// Auth routes on CloudFront
+site.distribution.addBehavior("/auth/*", auth.authOrigin, auth.authBehavior);
+```
+
+The construct exposes:
+
+- `handler` — the Lambda function
+- `distribution` — the CloudFront distribution
+- `httpApi` — the HTTP API (passed in)
+- `integration` — the `HttpLambdaIntegration` for wiring up routes
 
 ## Thank you
 

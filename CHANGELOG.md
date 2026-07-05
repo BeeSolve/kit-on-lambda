@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.5.1
+
+### Patch Changes
+
+- SvelteKitHttpApi: httpApi is now required, authorizer prop removed. The construct exposes integration for consumers to wire up routes externally. This enables patterns where auth services keep their authorizer private.
+
 ## 0.5.0
 
 ### Minor Changes
