@@ -5,9 +5,7 @@ import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
 import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
-import type { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import type { BehaviorOptions, DistributionProps, IOrigin } from "aws-cdk-lib/aws-cloudfront";
+import type { DistributionProps, OriginBase } from "aws-cdk-lib/aws-cloudfront";
 import {
   AllowedMethods,
   CachePolicy,
@@ -43,21 +41,70 @@ import { Construct } from "constructs";
 import { assertUnreachable } from "./util.js";
 
 type BaseProps = {
-  /** @default resolve(`./build`) */
+  /**
+   * @default resolve(`./build`)
+   */
   readonly buildDirectory?: string;
+
+  /**
+   * Some sensible CloudFront options are pre-set - you can change them through this setting.
+   */
   readonly distributionProps?: Omit<DistributionProps, "defaultBehavior">;
+
+  /**
+   * If you provide `basicHttpAuthentication` config the CloudFront function
+   * is deployed which will check your username/password against each request
+   */
   readonly basicHttpAuthentication?: {
     readonly username: string;
     readonly password: string;
   };
+
+  /**
+   * If you wish to use your own instance of LambdaKeepActive for better reuse
+   * you can pass it here. If you won't provide an instance it is created internally.
+   *
+   * @default LambdaKeepActive warmer is created internally
+   */
   readonly warmer?: LambdaKeepActive;
+
+  /**
+   * Allows you to change default origin of underlying CloudFront distribution.
+   *
+   * Both handler and invokeMode are passed internally.
+   *
+   * @default FunctionURL is provided by default.
+   */
+  readonly toDefaultOrigin?: (props: {
+    /**
+     * SvelteKit handler.
+     */
+    readonly handler: Function;
+    /**
+     * InvokeMode for FunctionUrl
+     */
+    readonly invokeMode?: InvokeMode;
+  }) => OriginBase;
 };
 
-type SvelteKitFunctionUrlProps =
+/**
+ * @default { runtime: "node" }
+ */
+type SvelteKitProps =
   | (BaseProps & {
       readonly runtime: "node";
-      /** @default InvokeMode.RESPONSE_STREAM */
+
+      /**
+       * @default InvokeMode.RESPONSE_STREAM
+       */
       readonly invokeMode?: InvokeMode;
+
+      /**
+       * By default Lambda with 1024MB and 10s of timeout is created.
+       * By default ARM archtecture and Node.js 24 is used.
+       *
+       * You can change any Lambda function options here
+       */
       readonly lambdaProps?: Omit<
         NodejsFunctionProps,
         "entrypoint" | "bundling" | "entry" | "code" | "handler"
@@ -65,207 +112,95 @@ type SvelteKitFunctionUrlProps =
     })
   | (BaseProps & {
       readonly runtime: "bun";
-      /** @default InvokeMode.RESPONSE_STREAM */
+
+      /**
+       * @default InvokeMode.RESPONSE_STREAM
+       */
       readonly invokeMode?: InvokeMode;
+
+      /**
+       * By default Lambda with 1024MB and 10s of timeout is created.
+       *
+       * You can change any Lambda function options here
+       */
       readonly lambdaProps?: Omit<BunFunctionProps, "entrypoint">;
     });
 
-export class SvelteKitFunctionUrl extends Construct {
+export class SvelteKit extends Construct {
   readonly distribution: Distribution;
   readonly handler: Function;
 
   constructor(
     scope: Construct,
     id: string,
-    props: SvelteKitFunctionUrlProps = { runtime: "node" },
+    props: SvelteKitProps = {
+      runtime: "node",
+    },
   ) {
     super(scope, id);
 
-    const { buildDirectory = resolve(`./build`) } = props;
-    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
-    const streaming = invokeMode === InvokeMode.RESPONSE_STREAM;
-
-    const handler = createHandler({ scope: this, props, buildDirectory, streaming });
-
-    keepActive({ scope: this, handler, warmer: props.warmer });
-
-    const originToken = new Secret(handler, "OriginToken", {
-      description: `x-origin-token for ${handler.node.path}.`,
-      removalPolicy: RemovalPolicy.DESTROY,
-      generateSecretString: { passwordLength: 128, excludePunctuation: true },
-    }).secretValue.toString();
-
-    handler.addEnvironment("ORIGIN_TOKEN", originToken);
-
-    const url = handler.addFunctionUrl({
-      authType: FunctionUrlAuthType.NONE,
-      invokeMode,
-      cors: { allowedOrigins: ["*"] },
-    });
-
-    const origin = new FunctionUrlOrigin(url, {
-      customHeaders: { "x-origin-token": originToken },
-    });
-
-    this.distribution = createDistribution({ scope: this, origin, props, buildDirectory });
-    this.handler = handler;
-  }
-}
-
-type SvelteKitHttpApiProps =
-  | (BaseProps & {
-      readonly runtime: "node";
-      readonly httpApi: HttpApi;
-      readonly lambdaProps?: Omit<
-        NodejsFunctionProps,
-        "entrypoint" | "bundling" | "entry" | "code" | "handler"
-      >;
-    })
-  | (BaseProps & {
-      readonly runtime: "bun";
-      readonly httpApi: HttpApi;
-      readonly lambdaProps?: Omit<BunFunctionProps, "entrypoint">;
-    });
-
-export class SvelteKitHttpApi extends Construct {
-  readonly distribution: Distribution;
-  readonly handler: Function;
-  readonly httpApi: HttpApi;
-  readonly integration: HttpLambdaIntegration;
-
-  constructor(scope: Construct, id: string, props: SvelteKitHttpApiProps) {
-    super(scope, id);
-
-    const { buildDirectory = resolve(`./build`) } = props;
-
-    const handler = createHandler({ scope: this, props, buildDirectory, streaming: false });
-
-    keepActive({ scope: this, handler, warmer: props.warmer });
-
-    const api = props.httpApi;
-    const integration = new HttpLambdaIntegration("LambdaIntegration", handler);
-
-    const domain = `${api.httpApiId}.execute-api.${handler.stack.region}.amazonaws.com`;
-    const origin = new HttpOrigin(domain, {
-      protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
-    });
-
-    this.distribution = createDistribution({ scope: this, origin, props, buildDirectory });
-    this.handler = handler;
-    this.httpApi = api;
-    this.integration = integration;
-  }
-}
-
-export { SvelteKitFunctionUrl as SvelteKit };
-export type { SvelteKitFunctionUrlProps, SvelteKitHttpApiProps };
-
-function keepActive(props: {
-  scope: Construct;
-  handler: Function;
-  warmer?: LambdaKeepActive;
-}): void {
-  const warmer = props.warmer ?? new LambdaKeepActive(props.scope, "KeepActive");
-  warmer.keepActive(props.handler);
-}
-
-function createHandler(props: {
-  scope: Construct;
-  props: SvelteKitFunctionUrlProps | SvelteKitHttpApiProps;
-  buildDirectory: string;
-  streaming: boolean;
-}): Function {
-  const entrypoint = props.streaming ? "stream" : "handler";
-
-  if (props.props.runtime === "node") {
-    const { lambdaProps = {} } = props.props;
-    const { logGroup, ...rest } = lambdaProps;
-
-    return new NodejsFunction(props.scope, "Handler", {
-      memorySize: 1024,
-      timeout: Duration.seconds(10),
-      code: Code.fromAsset(`${props.buildDirectory}/server/`),
-      handler: `${entrypoint}.handler`,
-      runtime: Runtime.NODEJS_24_X,
-      architecture: Architecture.ARM_64,
-      loggingFormat: LoggingFormat.JSON,
-      logGroup:
-        logGroup ??
-        new LogGroup(props.scope, "HandlerLogGroup", {
-          retention: RetentionDays.TWO_WEEKS,
-          removalPolicy: RemovalPolicy.DESTROY,
-        }),
-      ...rest,
-    });
-  }
-  if (props.props.runtime === "bun") {
     const {
-      lambdaProps = {
-        bunLayer: new BunLambdaLayer(props.scope, "BunLayer"),
-      } satisfies Omit<BunFunctionProps, "entrypoint">,
-    } = props.props;
+      buildDirectory = resolve(`./build`),
+      distributionProps,
+      toDefaultOrigin = toFunctionUrlOrigin(),
+    } = props;
 
-    return new BunFunction(props.scope, "Handler", {
-      entrypoint: `${props.buildDirectory}/server/${entrypoint}.js`,
-      memorySize: 1024,
-      timeout: Duration.seconds(10),
-      loggingFormat: LoggingFormat.JSON,
-      ...lambdaProps,
+    const handler = this.toHandler(props, buildDirectory);
+
+    const warmer = props.warmer ?? new LambdaKeepActive(this, "KeepActive");
+    warmer.keepActive(handler);
+
+    const bucket = new Bucket(this, "Assets", {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
+      websiteIndexDocument: "index.html",
+      cors: [
+        {
+          allowedMethods: [HttpMethods.GET, HttpMethods.HEAD],
+          allowedOrigins: ["*"],
+          allowedHeaders: ["*"],
+          maxAge: 300,
+        },
+      ],
     });
-  }
+    bucket.addToResourcePolicy(
+      new PolicyStatement({
+        principals: [new ArnPrincipal("*")],
+        actions: ["s3:GetObject"],
+        resources: [`${bucket.bucketArn}/*`],
+      }),
+    );
 
-  assertUnreachable(props.props);
-}
+    const s3Origin = new HttpOrigin(bucket.bucketWebsiteDomainName, {
+      originPath: "",
+      protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
+    });
 
-function createDistribution(props: {
-  scope: Construct;
-  origin: IOrigin;
-  props: BaseProps;
-  buildDirectory: string;
-}): Distribution {
-  const bucket = new Bucket(props.scope, "Assets", {
-    blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
-    websiteIndexDocument: "index.html",
-    cors: [
-      {
-        allowedMethods: [HttpMethods.GET, HttpMethods.HEAD],
-        allowedOrigins: ["*"],
-        allowedHeaders: ["*"],
-        maxAge: 300,
-      },
-    ],
-  });
-  bucket.addToResourcePolicy(
-    new PolicyStatement({
-      principals: [new ArnPrincipal("*")],
-      actions: ["s3:GetObject"],
-      resources: [`${bucket.bucketArn}/*`],
-    }),
-  );
-
-  const s3Origin = new HttpOrigin(bucket.bucketWebsiteDomainName, {
-    originPath: "",
-    protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
-  });
-
-  const defaultBehavior: BehaviorOptions = {
-    origin: props.origin,
-    viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-    originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-    allowedMethods: AllowedMethods.ALLOW_ALL,
-    cachePolicy: CachePolicy.CACHING_DISABLED,
-    functionAssociations: props.props.basicHttpAuthentication
-      ? [
-          {
-            eventType: FunctionEventType.VIEWER_REQUEST,
-            function: new CloudfrontFunction(props.scope, "AuthHandler", {
-              runtime: FunctionRuntime.JS_2_0,
-              code: FunctionCode.fromInline(`async function handler(event) {
+    const distribution = new Distribution(this, "Distribution", {
+      comment: `${this.node.path} SvelteKit distribution.`,
+      defaultBehavior: {
+        origin: toDefaultOrigin({
+          handler,
+          invokeMode: props.invokeMode,
+        }),
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        allowedMethods: AllowedMethods.ALLOW_ALL,
+        cachePolicy: CachePolicy.CACHING_DISABLED,
+        functionAssociations:
+          props.basicHttpAuthentication != null
+            ? [
+                {
+                  eventType: FunctionEventType.VIEWER_REQUEST,
+                  function: new CloudfrontFunction(this, "AuthHandler", {
+                    runtime: FunctionRuntime.JS_2_0,
+                    code: FunctionCode.fromInline(`async function handler(event) {
             const request = event.request;
-            var authString = 'Basic ' + Buffer.from("${props.props.basicHttpAuthentication.username}" + ':' + "${props.props.basicHttpAuthentication.password}").toString('base64');
+            var authString = 'Basic ' + Buffer.from("${props.basicHttpAuthentication.username}" + ':' + "${props.basicHttpAuthentication.password}").toString('base64');
+            // Check for Authorization header
             if (request.headers.authorization && request.headers.authorization.value === authString) {
                 return request;
             }
+            // If authorization fails, return a 401 Unauthorized response
             return {
                 statusCode: 401,
                 statusDescription: 'Unauthorized',
@@ -275,41 +210,110 @@ function createDistribution(props: {
                 },
             };
         }`),
-            }),
-          },
-        ]
-      : undefined,
-  };
-
-  const distribution = new Distribution(props.scope, "Distribution", {
-    comment: `${props.scope.node.path} SvelteKit distribution.`,
-    defaultBehavior,
-    priceClass: PriceClass.PRICE_CLASS_100,
-    ...props.props.distributionProps,
-  });
-
-  const routes: Array<string> = JSON.parse(
-    readFileSync(resolve(props.buildDirectory, "routes.json"), "utf-8"),
-  );
-  for (const route of routes) {
-    distribution.addBehavior(route, s3Origin, {
-      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-      originRequestPolicy: OriginRequestPolicy.USER_AGENT_REFERER_HEADERS,
-      cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+                  }),
+                },
+              ]
+            : undefined,
+      },
+      priceClass: PriceClass.PRICE_CLASS_100,
+      ...distributionProps,
     });
+
+    const routes: Array<string> = JSON.parse(
+      readFileSync(resolve(buildDirectory, "routes.json"), "utf-8"),
+    );
+    for (const route of routes) {
+      distribution.addBehavior(route, s3Origin, {
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        originRequestPolicy: OriginRequestPolicy.USER_AGENT_REFERER_HEADERS,
+        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+      });
+    }
+
+    new BucketDeployment(this, "Deployment", {
+      destinationBucket: bucket,
+      sources: [Source.asset(`${buildDirectory}/client`)],
+      distribution,
+      memoryLimit: 3008,
+    });
+
+    new CfnOutput(this, "CloudFrontDomain", {
+      value: distribution.domainName,
+    });
+
+    this.distribution = distribution;
+    this.handler = handler;
   }
 
-  new BucketDeployment(props.scope, "Deployment", {
-    destinationBucket: bucket,
-    sources: [Source.asset(`${props.buildDirectory}/client`)],
-    distribution,
-    memoryLimit: 3008,
-  });
+  private readonly toHandler = (props: SvelteKitProps, buildDirectory: string) => {
+    if (props.runtime === "bun") {
+      const {
+        invokeMode = InvokeMode.RESPONSE_STREAM,
+        lambdaProps = {
+          bunLayer: new BunLambdaLayer(this, "BunLayer"),
+        } satisfies Omit<BunFunctionProps, "entrypoint">,
+      } = props;
 
-  new CfnOutput(props.scope, "CloudFrontDomain", {
-    value: distribution.domainName,
-  });
+      return new BunFunction(this, "Handler", {
+        entrypoint: `${buildDirectory}/server/${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.js`,
+        memorySize: 1024,
+        timeout: Duration.seconds(10),
+        loggingFormat: LoggingFormat.JSON,
+        ...lambdaProps,
+      });
+    }
+    if (props.runtime === "node") {
+      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {} } = props;
 
-  return distribution;
+      const { logGroup, ...rest } = lambdaProps;
+
+      return new NodejsFunction(this, "Handler", {
+        memorySize: 1024,
+        timeout: Duration.seconds(10),
+        code: Code.fromAsset(`${buildDirectory}/server/`),
+        handler: `${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.handler`,
+        runtime: Runtime.NODEJS_24_X,
+        architecture: Architecture.ARM_64,
+        loggingFormat: LoggingFormat.JSON,
+        logGroup:
+          logGroup ??
+          new LogGroup(this, "HandlerLogGroup", {
+            retention: RetentionDays.TWO_WEEKS,
+            removalPolicy: RemovalPolicy.DESTROY,
+          }),
+        ...rest,
+      });
+    }
+
+    assertUnreachable(props);
+  };
+}
+
+function toFunctionUrlOrigin() {
+  return (props: { handler: Function; invokeMode?: InvokeMode }): OriginBase => {
+    const originToken = new Secret(props.handler, "OriginToken", {
+      description: `x-origin-token for ${props.handler.node.path}.`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      generateSecretString: { passwordLength: 128, excludePunctuation: true },
+    }).secretValue.toString();
+
+    props.handler.addEnvironment("ORIGIN_TOKEN", originToken);
+
+    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
+
+    const url = props.handler.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
+      invokeMode,
+      cors: {
+        allowedOrigins: ["*"],
+      },
+    });
+
+    return new FunctionUrlOrigin(url, {
+      customHeaders: {
+        "x-origin-token": originToken,
+      },
+    });
+  };
 }
