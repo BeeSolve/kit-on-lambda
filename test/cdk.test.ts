@@ -7,9 +7,11 @@ import { join } from "node:path";
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { InvokeMode } from "aws-cdk-lib/aws-lambda";
 
-import { SvelteKit, SvelteKitFunctionUrl, SvelteKitHttpApi } from "../cdk.js";
+import { SvelteKit } from "../cdk.js";
 
 let buildDirectory: string;
 
@@ -27,12 +29,12 @@ afterAll(() => {
   rmSync(buildDirectory, { recursive: true, force: true });
 });
 
-describe("SvelteKitFunctionUrl", () => {
+describe("SvelteKit with Function URL (default)", () => {
   it("creates a Lambda Function URL with RESPONSE_STREAM by default", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -49,7 +51,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
@@ -67,7 +69,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -86,7 +88,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -100,7 +102,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -118,7 +120,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -132,7 +134,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       invokeMode: InvokeMode.RESPONSE_STREAM,
       buildDirectory,
@@ -149,7 +151,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    new SvelteKitFunctionUrl(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
       invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
@@ -166,7 +168,7 @@ describe("SvelteKitFunctionUrl", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const site = new SvelteKitFunctionUrl(stack, "Site", {
+    const site = new SvelteKit(stack, "Site", {
       runtime: "node",
       buildDirectory,
     });
@@ -176,17 +178,24 @@ describe("SvelteKitFunctionUrl", () => {
   });
 });
 
-describe("SvelteKitHttpApi", () => {
-  it("uses the provided HTTP API for CloudFront origin", () => {
+describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
+  it("uses the provided origin instead of Function URL", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    new SvelteKitHttpApi(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/", methods: ["ANY" as never], integration });
+
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     const template = Template.fromStack(stack);
@@ -194,33 +203,21 @@ describe("SvelteKitHttpApi", () => {
     template.resourceCountIs("AWS::ApiGatewayV2::Api", 1);
   });
 
-  it("does not add routes to the API", () => {
-    const app = new App();
-    const stack = new Stack(app, "Test");
-
-    const existingApi = new HttpApi(stack, "ExistingApi");
-
-    new SvelteKitHttpApi(stack, "Site", {
-      runtime: "node",
-      httpApi: existingApi,
-      buildDirectory,
-    });
-
-    const template = Template.fromStack(stack);
-
-    template.resourceCountIs("AWS::ApiGatewayV2::Route", 0);
-  });
-
   it("does not create a Function URL", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    new SvelteKitHttpApi(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     const template = Template.fromStack(stack);
@@ -232,12 +229,17 @@ describe("SvelteKitHttpApi", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    new SvelteKitHttpApi(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     const template = Template.fromStack(stack);
@@ -245,16 +247,21 @@ describe("SvelteKitHttpApi", () => {
     template.resourceCountIs("AWS::SecretsManager::Secret", 0);
   });
 
-  it("always uses the buffered handler", () => {
+  it("uses the buffered handler when invokeMode is BUFFERED", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    new SvelteKitHttpApi(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     const template = Template.fromStack(stack);
@@ -268,12 +275,17 @@ describe("SvelteKitHttpApi", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    new SvelteKitHttpApi(stack, "Site", {
+    new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     const template = Template.fromStack(stack);
@@ -281,27 +293,24 @@ describe("SvelteKitHttpApi", () => {
     template.resourceCountIs("AWS::CloudFront::Distribution", 1);
   });
 
-  it("exposes distribution, handler, httpApi, and integration properties", () => {
+  it("exposes distribution and handler properties", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
-    const existingApi = new HttpApi(stack, "ExistingApi");
+    const api = new HttpApi(stack, "Api");
 
-    const site = new SvelteKitHttpApi(stack, "Site", {
+    const site = new SvelteKit(stack, "Site", {
       runtime: "node",
-      httpApi: existingApi,
+      invokeMode: InvokeMode.BUFFERED,
       buildDirectory,
+      toDefaultOrigin: ({ handler }) => {
+        const integration = new HttpLambdaIntegration("Integration", handler);
+        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
+      },
     });
 
     expect(site.distribution).toBeDefined();
     expect(site.handler).toBeDefined();
-    expect(site.httpApi).toBeDefined();
-    expect(site.integration).toBeDefined();
-  });
-});
-
-describe("SvelteKit alias", () => {
-  it("is the same class as SvelteKitFunctionUrl", () => {
-    expect(SvelteKit).toBe(SvelteKitFunctionUrl);
   });
 });

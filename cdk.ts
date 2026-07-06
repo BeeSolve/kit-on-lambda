@@ -42,18 +42,21 @@ import { assertUnreachable } from "./util.js";
 
 type BaseProps = {
   /**
-   * @default resolve(`./build`)
+   * Path to the SvelteKit build output directory.
+   *
+   * @default resolve("./build")
    */
   readonly buildDirectory?: string;
 
   /**
-   * Some sensible CloudFront options are pre-set - you can change them through this setting.
+   * Override pre-set CloudFront distribution options. The `defaultBehavior` is managed
+   * internally and cannot be overridden here.
    */
   readonly distributionProps?: Omit<DistributionProps, "defaultBehavior">;
 
   /**
-   * If you provide `basicHttpAuthentication` config the CloudFront function
-   * is deployed which will check your username/password against each request
+   * If provided, a CloudFront function is deployed that checks Basic HTTP authentication
+   * credentials against each request.
    */
   readonly basicHttpAuthentication?: {
     readonly username: string;
@@ -61,35 +64,32 @@ type BaseProps = {
   };
 
   /**
-   * If you wish to use your own instance of LambdaKeepActive for better reuse
-   * you can pass it here. If you won't provide an instance it is created internally.
+   * Provide your own LambdaKeepActive instance for reuse across multiple constructs.
    *
-   * @default LambdaKeepActive warmer is created internally
+   * @default A new LambdaKeepActive warmer is created internally.
    */
   readonly warmer?: LambdaKeepActive;
 
   /**
-   * Allows you to change default origin of underlying CloudFront distribution.
+   * Factory function that creates the default CloudFront origin from the SvelteKit Lambda handler.
    *
-   * Both handler and invokeMode are passed internally.
+   * The construct passes `handler` and `invokeMode` to this function internally.
+   * Override this to use a custom origin (e.g., HTTP API Gateway).
    *
-   * @default FunctionURL is provided by default.
+   * @default Function URL origin with secret-based origin token.
    */
   readonly toDefaultOrigin?: (props: {
     /**
-     * SvelteKit handler.
+     * SvelteKit Lambda handler.
      */
     readonly handler: Function;
     /**
-     * InvokeMode for FunctionUrl
+     * InvokeMode selected for this deployment.
      */
     readonly invokeMode?: InvokeMode;
   }) => OriginBase;
 };
 
-/**
- * @default { runtime: "node" }
- */
 type SvelteKitProps =
   | (BaseProps & {
       readonly runtime: "node";
@@ -101,9 +101,9 @@ type SvelteKitProps =
 
       /**
        * By default Lambda with 1024MB and 10s of timeout is created.
-       * By default ARM archtecture and Node.js 24 is used.
+       * By default ARM architecture and Node.js 24 is used.
        *
-       * You can change any Lambda function options here
+       * You can change any Lambda function options here.
        */
       readonly lambdaProps?: Omit<
         NodejsFunctionProps,
@@ -121,7 +121,7 @@ type SvelteKitProps =
       /**
        * By default Lambda with 1024MB and 10s of timeout is created.
        *
-       * You can change any Lambda function options here
+       * You can change any Lambda function options here.
        */
       readonly lambdaProps?: Omit<BunFunctionProps, "entrypoint">;
     });

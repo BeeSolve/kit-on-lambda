@@ -5,14 +5,9 @@
 
 SvelteKit adapter for AWS Lambda — deploy to Node.js or Bun runtimes, bundled with esbuild or Bun, behind CloudFront.
 
-Supports two origin modes:
+By default the construct uses a Lambda Function URL as the CloudFront origin (with response streaming). You can override this with any custom origin via the `toDefaultOrigin` prop — for example, an HTTP API Gateway when you need a Lambda authorizer.
 
-| Origin mode      | Streaming | Lambda authorizer | Use case                        |
-| ---------------- | --------- | ----------------- | ------------------------------- |
-| Function URL     | ✅        | ❌                | Default, best for most apps     |
-| HTTP API Gateway | ❌        | ✅                | Apps needing gateway-level auth |
-
-And three build/runtime configurations:
+Three build/runtime configurations are supported:
 
 | Option      | Build tool | Lambda runtime     |
 | ----------- | ---------- | ------------------ |
@@ -36,11 +31,11 @@ npm i @beesolve/lambda-fetch-api
 bun i @beesolve/lambda-fetch-api
 ```
 
+[`@beesolve/lambda-fetch-api`](https://www.npmjs.com/package/@beesolve/lambda-fetch-api) provides `getAwsEvent()` / `getAwsContext()` backed by `AsyncLocalStorage`.
+
 ## Architecture
 
 SvelteKit is deployed to AWS Lambda behind CloudFront. Static assets are served from an S3 bucket.
-
-### Function URL origin (default)
 
 ```mermaid
 graph LR
@@ -48,17 +43,6 @@ graph LR
     CloudFront -->|static assets| S3[S3 Bucket]
     CloudFront -->|dynamic requests| FnUrl[Function URL]
     FnUrl --> Lambda[Lambda - SvelteKit]
-```
-
-### HTTP API Gateway origin
-
-```mermaid
-graph LR
-    Client --> CloudFront
-    CloudFront -->|static assets| S3[S3 Bucket]
-    CloudFront -->|dynamic requests| APIGW[HTTP API Gateway]
-    APIGW -->|authorizer| AuthFn[Authorizer Lambda]
-    APIGW --> Lambda[Lambda - SvelteKit]
 ```
 
 ## Option 1 — build with esbuild, run on Node.js runtime
@@ -153,7 +137,7 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 
 ### Accessing the AWS event and context (Node.js runtime)
 
-Install `@beesolve/lambda-fetch-api` and use `getAwsEvent()` / `getAwsContext()` from anywhere inside a request handler. These are backed by `AsyncLocalStorage` — no request argument needed.
+Install [`@beesolve/lambda-fetch-api`](https://www.npmjs.com/package/@beesolve/lambda-fetch-api) and use `getAwsEvent()` / `getAwsContext()` from anywhere inside a request handler. These are backed by `AsyncLocalStorage` — no request argument needed.
 
 ```ts
 // hooks.server.ts
@@ -184,7 +168,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ## Option 2 — build with Bun, run on Bun runtime
 
-Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via `@beesolve/lambda-bun-runtime`.
+Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime).
 
 ```ts
 // svelte.config.js
@@ -277,18 +261,22 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 });
 ```
 
-## HTTP API Gateway origin mode
+## Custom origins with `toDefaultOrigin`
 
-Use `SvelteKitHttpApi` when you need a Lambda authorizer at the gateway level (e.g., for session validation). This mode uses HTTP API Gateway as the CloudFront origin instead of a Function URL.
+The `SvelteKit` construct uses a Function URL as the CloudFront origin by default. You can replace it with any origin by providing a `toDefaultOrigin` factory function.
 
-> [!NOTE]
-> Response streaming is not available with HTTP API Gateway. The Lambda always uses the buffered handler.
+### HTTP API Gateway origin
+
+Use this when you need a Lambda authorizer at the gateway level (e.g., for session validation). Response streaming is not available with HTTP API Gateway — the Lambda always uses the buffered handler.
 
 ```ts
 // app.ts
-import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
-import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
+import { SvelteKit } from "kit-on-lambda/cdk";
 import { App, Stack, type Environment } from "aws-cdk-lib";
+import { InvokeMode } from "aws-cdk-lib/aws-lambda";
+import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 
 const app = new App();
 const stack = new Stack(app, "YourSite", {
@@ -297,53 +285,76 @@ const stack = new Stack(app, "YourSite", {
 
 const api = new HttpApi(stack, "Api");
 
-const { handler, distribution, integration } = new SvelteKitHttpApi(stack, "SvelteKit", {
+const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
   runtime: "node",
-  httpApi: api,
-});
+  invokeMode: InvokeMode.BUFFERED,
+  toDefaultOrigin: ({ handler }) => {
+    const integration = new HttpLambdaIntegration("Integration", handler);
 
-// Add catch-all routes — you control the routing and authorizer
-api.addRoutes({
-  path: "/{proxy+}",
-  methods: [HttpMethod.ANY],
-  integration,
-});
-api.addRoutes({
-  path: "/",
-  methods: [HttpMethod.ANY],
-  integration,
+    api.addRoutes({
+      path: "/{proxy+}",
+      methods: [HttpMethod.ANY],
+      integration,
+    });
+    api.addRoutes({
+      path: "/",
+      methods: [HttpMethod.ANY],
+      integration,
+    });
+
+    const apiUrl = new URL(api.apiEndpoint);
+    return new HttpOrigin(apiUrl.hostname);
+  },
 });
 ```
 
 ### With a service that manages the authorizer
 
-When using `@beesolve/auth-service` or similar, the service can wire up routing with its internal authorizer:
+When using [`@beesolve/auth-service`](https://www.npmjs.com/package/@beesolve/auth-service) or similar, the service can wire up routing with its internal authorizer:
 
 ```ts
+import { SvelteKit } from "kit-on-lambda/cdk";
 import { Auth } from "@beesolve/auth-service/cdk";
-import { SvelteKitHttpApi } from "kit-on-lambda/cdk";
+import { Fn } from "aws-cdk-lib";
+import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 
-const auth = new Auth(stack, "Auth", { ... });
-
-const site = new SvelteKitHttpApi(stack, "SvelteKit", {
-  runtime: "node",
-  httpApi: auth.api,
-  buildDirectory: resolve("./site/build"),
+const auth = new Auth(this, "Auth", {
+  alarms: props.alarms,
+  frontendUri: props.frontendUri,
+  stage: props.stage,
+  contributorInsights: false,
+  warmer: props.warmer,
+  allowSignUp: false,
 });
 
-// Auth adds catch-all routes with its session authorizer
-auth.protect(site.integration);
+const { distribution } = new SvelteKit(this, "SvelteKit", {
+  runtime: "node",
+  toDefaultOrigin: ({ handler }) => {
+    auth.addAuthorizedEndpoint({ lambda: handler });
+    auth.grantSdkAccess(handler);
 
-// Auth routes on CloudFront
-site.distribution.addBehavior("/auth/*", auth.authOrigin, auth.authBehavior);
+    return new HttpOrigin(Fn.parseDomainName(auth.api.url));
+  },
+});
+
+const authBehaviour = auth.createAuthBehavior(distribution);
+distribution.addBehavior("/auth/*", authBehaviour.origin, authBehaviour);
 ```
 
 The construct exposes:
 
-- `handler` — the Lambda function
-- `distribution` — the CloudFront distribution
-- `httpApi` — the HTTP API (passed in)
-- `integration` — the `HttpLambdaIntegration` for wiring up routes
+- `handler` — the Lambda function.
+- `distribution` — the CloudFront distribution.
+
+## Troubleshooting
+
+### SvelteKit named form actions — `?/actionName` query parameter
+
+AWS (both Function URL and API Gateway) does not allow unencoded `/` in query parameter values. SvelteKit's named form actions use `?/actionName` as the query string, which gets rejected or mangled.
+
+**Workaround:** encode the action parameter in your forms and hooks so the slash is sent as `%2F`.
+
+Tracked upstream: [sveltejs/kit#15610](https://github.com/sveltejs/kit/issues/15610)
 
 ## Thank you
 

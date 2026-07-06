@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.6.0
+
+### Minor Changes
+
+- Unify CDK constructs into a single `SvelteKit` class with a `toDefaultOrigin` prop. The previous `SvelteKitFunctionUrl` and `SvelteKitHttpApi` exports are removed. To use HTTP API Gateway as the CloudFront origin, pass a `toDefaultOrigin` factory function instead.
+
 ## 0.5.1
 
 ### Patch Changes
