@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
 import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
+import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
+import type { DistributionProps, OriginBase } from "aws-cdk-lib/aws-cloudfront";
 import {
   AllowedMethods,
   CachePolicy,
@@ -18,9 +19,9 @@ import {
   PriceClass,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
-import type { DistributionProps } from "aws-cdk-lib/aws-cloudfront";
 import { FunctionUrlOrigin, HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { ArnPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import type { Function } from "aws-cdk-lib/aws-lambda";
 import {
   Architecture,
   Code,
@@ -29,9 +30,8 @@ import {
   LoggingFormat,
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
-import type { Function } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import type { NodejsFunctionProps } from "aws-cdk-lib/aws-lambda-nodejs";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
@@ -67,6 +67,24 @@ type BaseProps = {
    * @default LambdaKeepActive warmer is created internally
    */
   readonly warmer?: LambdaKeepActive;
+
+  /**
+   * Allows you to change default origin of underlying CloudFront distribution.
+   *
+   * Both handler and invokeMode are passed internally.
+   *
+   * @default FunctionURL is provided by default.
+   */
+  readonly toDefaultOrigin?: (props: {
+    /**
+     * SvelteKit handler.
+     */
+    readonly handler: Function;
+    /**
+     * InvokeMode for FunctionUrl
+     */
+    readonly invokeMode?: InvokeMode;
+  }) => OriginBase;
 };
 
 /**
@@ -112,33 +130,25 @@ export class SvelteKit extends Construct {
   readonly distribution: Distribution;
   readonly handler: Function;
 
-  constructor(scope: Construct, id: string, props: SvelteKitProps = { runtime: "node" }) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: SvelteKitProps = {
+      runtime: "node",
+    },
+  ) {
     super(scope, id);
 
-    const { buildDirectory = resolve(`./build`), distributionProps } = props;
+    const {
+      buildDirectory = resolve(`./build`),
+      distributionProps,
+      toDefaultOrigin = toFunctionUrlOrigin(),
+    } = props;
 
     const handler = this.toHandler(props, buildDirectory);
 
     const warmer = props.warmer ?? new LambdaKeepActive(this, "KeepActive");
     warmer.keepActive(handler);
-
-    const originToken = new Secret(handler, "OriginToken", {
-      description: `x-origin-token for ${handler.node.path}.`,
-      removalPolicy: RemovalPolicy.DESTROY,
-      generateSecretString: { passwordLength: 128, excludePunctuation: true },
-    }).secretValue.toString();
-
-    handler.addEnvironment("ORIGIN_TOKEN", originToken);
-
-    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
-
-    const url = handler.addFunctionUrl({
-      authType: FunctionUrlAuthType.NONE,
-      invokeMode,
-      cors: {
-        allowedOrigins: ["*"],
-      },
-    });
 
     const bucket = new Bucket(this, "Assets", {
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
@@ -168,10 +178,9 @@ export class SvelteKit extends Construct {
     const distribution = new Distribution(this, "Distribution", {
       comment: `${this.node.path} SvelteKit distribution.`,
       defaultBehavior: {
-        origin: new FunctionUrlOrigin(url, {
-          customHeaders: {
-            "x-origin-token": originToken,
-          },
+        origin: toDefaultOrigin({
+          handler,
+          invokeMode: props.invokeMode,
         }),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
@@ -278,5 +287,33 @@ export class SvelteKit extends Construct {
     }
 
     assertUnreachable(props);
+  };
+}
+
+function toFunctionUrlOrigin() {
+  return (props: { handler: Function; invokeMode?: InvokeMode }): OriginBase => {
+    const originToken = new Secret(props.handler, "OriginToken", {
+      description: `x-origin-token for ${props.handler.node.path}.`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      generateSecretString: { passwordLength: 128, excludePunctuation: true },
+    }).secretValue.toString();
+
+    props.handler.addEnvironment("ORIGIN_TOKEN", originToken);
+
+    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
+
+    const url = props.handler.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
+      invokeMode,
+      cors: {
+        allowedOrigins: ["*"],
+      },
+    });
+
+    return new FunctionUrlOrigin(url, {
+      customHeaders: {
+        "x-origin-token": originToken,
+      },
+    });
   };
 }
