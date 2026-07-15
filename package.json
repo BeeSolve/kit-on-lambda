@@ -59,8 +59,8 @@
   },
   "dependencies": {
     "@beesolve/lambda-bun-runtime": "^3.10314.0",
-    "@beesolve/lambda-fetch-api": "^1.0.2",
-    "@beesolve/lambda-keep-active": "^2.0.0"
+    "@beesolve/lambda-fetch-api": "^2.0.0",
+    "@beesolve/lambda-keep-active": "^2.1.0"
   },
   "devDependencies": {
     "@beesolve/lint-config": "^0.2.4",
