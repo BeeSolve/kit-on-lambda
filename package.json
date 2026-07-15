@@ -1,6 +1,6 @@
 {
   "name": "kit-on-lambda",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "SvelteKit adapter for AWS Lambda for Node.js and Bun runtimes",
   "keywords": [
     "adapter",

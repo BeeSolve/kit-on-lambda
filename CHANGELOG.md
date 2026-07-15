@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 0.6.1
+
+### Patch Changes
+
+- a2b4375: Bump @beesolve/lambda-fetch-api to ^2.0.0, remove unused @beesolve/auth-service dependency, add overrides to deduplicate aws-cdk-lib
+
 ## 0.6.0
 
 ### Minor Changes
