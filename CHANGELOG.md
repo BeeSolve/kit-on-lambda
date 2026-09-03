@@ -1,5 +1,23 @@
 # kit-on-lambda
 
+## 0.7.0
+
+### Minor Changes
+
+- 4b8c1ef: Serve static assets from a REST S3 origin with Origin Access Control (OAC) instead of an S3 website origin.
+
+  The website endpoint returned an HTML error/index document for missing objects, so a missing hashed asset (e.g. during a version skew or partial upload) came back as `text/html`. Browsers then tried to parse that HTML as an ES module and threw "Importing a module script failed", producing silent styling breakage instead of a clear error. A REST S3 origin via OAC returns real HTTP status codes and the object's stored Content-Type, so a missing asset 404s cleanly and never poisons module imports. The assets bucket is now fully private (all public access blocked, no public bucket policy, no website configuration); CloudFront signs origin requests via OAC.
+
+  This changes the provisioned infrastructure: on redeploy the assets bucket loses its website configuration and public-read policy, and a CloudFront Origin Access Control resource plus an OAC-scoped bucket policy are added. No API changes.
+
+### Patch Changes
+
+- a2b4375: Bump @beesolve/lambda-fetch-api to ^2.0.0, remove unused @beesolve/auth-service dependency, add overrides to deduplicate aws-cdk-lib
+- e613e8f: Document local development in the README: `vite dev` runs the app as a normal
+  SvelteKit project (no Lambda), how to load env vars with `bun --env-file`, and that
+  `getAwsEvent()` / `getAwsContext()` throw outside a real invocation — with a
+  `import.meta.env.DEV` guard pattern for local fallbacks.
+
 ## 0.6.0
 
 ### Minor Changes
