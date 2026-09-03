@@ -33,7 +33,7 @@ jobs:
         run: bun run prepublishOnly
 
       - name: Open Version PR (when changesets pending)
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           version: bunx changeset version
         env:
