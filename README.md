@@ -45,6 +45,59 @@ graph LR
     FnUrl --> Lambda[Lambda - SvelteKit]
 ```
 
+## Local development
+
+The adapter only affects the **build/deploy** output. Locally you run the app as a
+normal SvelteKit project with Vite — there is no Lambda, CloudFront, or S3 involved:
+
+```bash
+bun run dev        # or: npm run dev / vite dev
+```
+
+If you use Bun and load env vars from a file, wire it into the `dev` script so it is
+applied automatically:
+
+```json
+{
+  "scripts": {
+    "dev": "bun --env-file=.env.local vite dev"
+  }
+}
+```
+
+### The AWS event/context is not available under `vite dev`
+
+`getAwsEvent()` / `getAwsContext()` (from
+[`@beesolve/lambda-fetch-api`](https://www.npmjs.com/package/@beesolve/lambda-fetch-api))
+are backed by an `AsyncLocalStorage` store that is only populated **inside a real
+Lambda invocation** (via `runWithAwsContext` in the adapter's handler). Under
+`vite dev` there is no invocation, so calling them throws
+`NotInHandlerContextError: getAws* called outside of a handler invocation.`
+
+Guard any code that reads them so it has a local fallback. `import.meta.env.DEV` is
+`true` under `vite dev` and compiled out of the production build:
+
+```ts
+// hooks.server.ts
+import { getAwsEvent } from "@beesolve/lambda-fetch-api";
+
+export const handle: Handle = async ({ event, resolve }) => {
+  if (import.meta.env.DEV) {
+    // Local dev: no Lambda context — inject whatever the app needs.
+    event.locals.session = devSession;
+  } else {
+    const awsEvent = getAwsEvent(); // safe: only runs inside a real invocation
+    // ...derive locals from the authorizer/event...
+  }
+  return resolve(event);
+};
+```
+
+Services that build on this adapter often expose a dev fallback so you do not have to
+write this yourself — e.g. [`@beesolve/auth-service`](https://www.npmjs.com/package/@beesolve/auth-service)'s
+`createSessionHandle({ fallbackSession })` injects a session automatically when not
+running in Lambda.
+
 ## Option 1 — build with esbuild, run on Node.js runtime
 
 The default adapter. Uses esbuild to bundle the server and deploys to the official Node.js Lambda runtime.
