@@ -96,7 +96,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 Services that build on this adapter often expose a dev fallback so you do not have to
 write this yourself — e.g. [`@beesolve/auth-service`](https://www.npmjs.com/package/@beesolve/auth-service)'s
 `createSessionHandle({ fallbackSession })` injects a session automatically when not
-running in Lambda.
+running in Lambda. For a full end-to-end walkthrough of running auth-service with this
+adapter locally, see
+[auth-service how-to: local development with kit-on-lambda](https://github.com/beesolve/packages/blob/main/packages/service-auth/docs/how-to/local-development-with-kit-on-lambda.md).
 
 ## Option 1 — build with esbuild, run on Node.js runtime
 
