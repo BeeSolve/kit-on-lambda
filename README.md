@@ -310,36 +310,7 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 
 ### With a service that manages the authorizer
 
-When using [`@beesolve/auth-service`](https://www.npmjs.com/package/@beesolve/auth-service) or similar, the service can wire up routing with its internal authorizer:
-
-```ts
-import { SvelteKit } from "kit-on-lambda/cdk";
-import { Auth } from "@beesolve/auth-service/cdk";
-import { Fn } from "aws-cdk-lib";
-import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
-
-const auth = new Auth(this, "Auth", {
-  alarms: props.alarms,
-  frontendUri: props.frontendUri,
-  stage: props.stage,
-  contributorInsights: false,
-  warmer: props.warmer,
-  allowSignUp: false,
-});
-
-const { distribution } = new SvelteKit(this, "SvelteKit", {
-  runtime: "node",
-  toDefaultOrigin: ({ handler }) => {
-    auth.addAuthorizedEndpoint({ lambda: handler });
-    auth.grantSdkAccess(handler);
-
-    return new HttpOrigin(Fn.parseDomainName(auth.api.url));
-  },
-});
-
-const authBehaviour = auth.createAuthBehavior(distribution);
-distribution.addBehavior("/auth/*", authBehaviour.origin, authBehaviour);
-```
+When using [`@beesolve/auth-service`](https://www.npmjs.com/package/@beesolve/auth-service), the service manages the HTTP API Gateway, Lambda authorizer, and CloudFront behaviors. See the [auth-service CDK documentation](https://github.com/beesolve/packages/tree/main/packages/service-auth#cdk-setup) for full integration examples with `kit-on-lambda`.
 
 The construct exposes:
 
