@@ -98,7 +98,7 @@ describe("SvelteKit with Function URL (default)", () => {
     template.resourceCountIs("AWS::CloudFront::Distribution", 1);
   });
 
-  it("creates an S3 bucket for static assets", () => {
+  it("creates a private S3 bucket for static assets", () => {
     const app = new App();
     const stack = new Stack(app, "Test");
 
@@ -109,9 +109,39 @@ describe("SvelteKit with Function URL (default)", () => {
 
     const template = Template.fromStack(stack);
 
+    // Assets are served via a REST S3 origin with OAC, so the bucket is fully
+    // private — no website configuration, all public access blocked.
     template.hasResourceProperties("AWS::S3::Bucket", {
-      WebsiteConfiguration: {
-        IndexDocument: "index.html",
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
+
+    const buckets = template.findResources("AWS::S3::Bucket");
+    for (const bucket of Object.values(buckets)) {
+      expect(bucket.Properties?.WebsiteConfiguration).toBeUndefined();
+    }
+  });
+
+  it("serves assets via CloudFront Origin Access Control", () => {
+    const app = new App();
+    const stack = new Stack(app, "Test");
+
+    new SvelteKit(stack, "Site", {
+      runtime: "node",
+      buildDirectory,
+    });
+
+    const template = Template.fromStack(stack);
+
+    template.hasResourceProperties("AWS::CloudFront::OriginAccessControl", {
+      OriginAccessControlConfig: {
+        OriginAccessControlOriginType: "s3",
+        SigningBehavior: "always",
+        SigningProtocol: "sigv4",
       },
     });
   });

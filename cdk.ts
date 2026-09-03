@@ -14,13 +14,11 @@ import {
   FunctionCode,
   FunctionEventType,
   FunctionRuntime,
-  OriginProtocolPolicy,
   OriginRequestPolicy,
   PriceClass,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
-import { FunctionUrlOrigin, HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
-import { ArnPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { FunctionUrlOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import type { Function } from "aws-cdk-lib/aws-lambda";
 import {
   Architecture,
@@ -151,8 +149,8 @@ export class SvelteKit extends Construct {
     warmer.keepActive(handler);
 
     const bucket = new Bucket(this, "Assets", {
-      blockPublicAccess: BlockPublicAccess.BLOCK_ACLS_ONLY,
-      websiteIndexDocument: "index.html",
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
       cors: [
         {
           allowedMethods: [HttpMethods.GET, HttpMethods.HEAD],
@@ -162,18 +160,21 @@ export class SvelteKit extends Construct {
         },
       ],
     });
-    bucket.addToResourcePolicy(
-      new PolicyStatement({
-        principals: [new ArnPrincipal("*")],
-        actions: ["s3:GetObject"],
-        resources: [`${bucket.bucketArn}/*`],
-      }),
-    );
 
-    const s3Origin = new HttpOrigin(bucket.bucketWebsiteDomainName, {
-      originPath: "",
-      protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
-    });
+    // Serve static assets from a REST S3 origin with Origin Access Control (OAC).
+    //
+    // A missing object on an S3 *website* endpoint returns an HTML error/index
+    // document (Content-Type: text/html), so a missing hashed asset such as
+    // `/_app/immutable/nodes/5.<hash>.js` comes back as HTML. The browser then
+    // tries to parse HTML as an ES module and throws "Importing a module script
+    // failed", turning a version skew or partial upload into a confusing,
+    // silent styling failure instead of an honest error.
+    //
+    // A REST S3 origin (via OAC) returns real HTTP status codes and the object's
+    // stored Content-Type metadata: a missing asset 404s cleanly and never
+    // poisons module imports. OAC also keeps the bucket fully private — CloudFront
+    // signs origin requests — so no public bucket policy is required.
+    const s3Origin = S3BucketOrigin.withOriginAccessControl(bucket);
 
     const distribution = new Distribution(this, "Distribution", {
       comment: `${this.node.path} SvelteKit distribution.`,
