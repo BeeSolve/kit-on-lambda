@@ -109,19 +109,14 @@ The default adapter. Uses esbuild to bundle the server and deploys to the offici
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import adapter from "kit-on-lambda";
 
-const originUrl = "https://{distributionId}.cloudfront.net";
-
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter(),
-    paths: {
-      assets: originUrl,
-    },
-    csrf: {
-      trustedOrigins: [originUrl],
-    },
+    // Emit root-absolute asset paths so nested routes load assets correctly.
+    // See "Asset paths" for the CloudFront-URL alternative.
+    paths: { relative: false },
   },
 };
 
@@ -129,7 +124,68 @@ export default config;
 ```
 
 > [!NOTE]
-> Set `kit.paths.assets` and `kit.csrf.trustedOrigins` to your CloudFront distribution URL.
+> Setting `kit.paths.assets` to the CloudFront URL is **optional**. See
+> [Asset paths](#asset-paths--pathsrelative-vs-pathsassets) below for the
+> trade-offs and for a configuration that does not require knowing the
+> distribution URL at build time. If you do set `kit.paths.assets`, also add the
+> same URL to `kit.csrf.trustedOrigins`.
+
+### Asset paths — `paths.relative` vs `paths.assets`
+
+SvelteKit references built assets (`/_app/...`, `favicon`, etc.) from every rendered
+page. How those references are written matters here, because the app is served
+**dynamically** from the Lambda: a page at `/domains` and a page at `/` are produced by
+the same handler, but the browser resolves relative URLs against the current path.
+
+The `SvelteKit` construct always adds a CloudFront behavior for each static asset
+directory (`/_app/*`) and top-level static file, pointing them at the S3 bucket. So any
+**root-absolute** asset URL (`/_app/...`) is served straight from S3 regardless of which
+route requested the page — no build-time knowledge of the distribution URL is needed.
+
+You have two ways to make SvelteKit emit URLs that work behind this setup:
+
+#### Recommended: `paths.relative: false` (no CloudFront URL required)
+
+```ts
+// svelte.config.js
+kit: {
+  adapter: adapter(),
+  // Emit root-absolute asset paths (/_app/...) instead of relative (./_app/...).
+  paths: { relative: false },
+}
+```
+
+With this, SvelteKit writes `/_app/...`, which CloudFront routes to S3 via the behaviors
+the construct sets up. You do **not** need the distribution URL at build time, which
+avoids the first-deploy chicken-and-egg problem (the CloudFront URL does not exist until
+after the first `cdk deploy`). This is the simplest correct configuration for a
+single-distribution deployment.
+
+#### Alternative: `paths.assets` = CloudFront URL
+
+```ts
+// svelte.config.js
+const originUrl = "https://{distributionId}.cloudfront.net";
+
+kit: {
+  adapter: adapter(),
+  paths: { assets: originUrl },
+  csrf: { trustedOrigins: [originUrl] },
+}
+```
+
+This rewrites every asset URL to an absolute `https://{distributionId}.cloudfront.net/_app/...`.
+Use it when you serve assets from a **different** origin/domain than the app, or when you
+need fully-qualified asset URLs (e.g. embedding the app under another domain). Because
+the URL must be baked in at build time, you have to deploy once to learn the distribution
+URL, then set it and redeploy. When you set `paths.assets`, add the same URL to
+`csrf.trustedOrigins` so form actions and CSRF checks accept the origin.
+
+> [!WARNING]
+> Do **not** leave `paths.relative` at its default (`true`) without setting
+> `paths.assets`. SvelteKit then emits `./_app/...`, which the browser resolves against
+> the current route depth — e.g. a page at `/domains` requests `/domains/_app/...`, which
+> 404s and drops all styling/scripts on nested routes. Use either option above.
 
 ```ts
 // app.ts
@@ -230,19 +286,13 @@ Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import adapter from "kit-on-lambda/bun";
 
-const originUrl = "https://{distributionId}.cloudfront.net";
-
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({ runtime: "bun" }),
-    paths: {
-      assets: originUrl,
-    },
-    csrf: {
-      trustedOrigins: [originUrl],
-    },
+    // See "Asset paths" for the CloudFront-URL alternative.
+    paths: { relative: false },
   },
 };
 
@@ -282,19 +332,13 @@ Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful 
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import adapter from "kit-on-lambda/bun";
 
-const originUrl = "https://{distributionId}.cloudfront.net";
-
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({ runtime: "node" }),
-    paths: {
-      assets: originUrl,
-    },
-    csrf: {
-      trustedOrigins: [originUrl],
-    },
+    // See "Asset paths" for the CloudFront-URL alternative.
+    paths: { relative: false },
   },
 };
 
@@ -381,6 +425,16 @@ AWS (both Function URL and API Gateway) does not allow unencoded `/` in query pa
 **Workaround:** encode the action parameter in your forms and hooks so the slash is sent as `%2F`.
 
 Tracked upstream: [sveltejs/kit#15610](https://github.com/sveltejs/kit/issues/15610)
+
+### Missing styles/scripts on nested routes (assets 404)
+
+If pages load correctly at `/` but lose all styling on nested routes like `/domains`, and
+the network tab shows 404s for `/domains/_app/...`, SvelteKit is emitting **relative**
+asset URLs (`./_app/...`). Because the app is served dynamically, the browser resolves
+those against the current route depth.
+
+**Fix:** set `paths.relative: false` (recommended) or `paths.assets` to your CloudFront
+URL. See [Asset paths](#asset-paths--pathsrelative-vs-pathsassets).
 
 ## Thank you
 
