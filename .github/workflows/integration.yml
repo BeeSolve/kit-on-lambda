@@ -2,6 +2,10 @@ name: Integration Tests
 
 on:
   workflow_call:
+    secrets:
+      AWS_INTEG_ROLE_ARN:
+        description: IAM role ARN for OIDC-based integration test access
+        required: true
   workflow_dispatch:
   push:
     branches: [main]

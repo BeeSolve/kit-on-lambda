@@ -1,0 +1,40 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Cheap gate that runs on every PR (including Dependabot and forks): build,
+  # lint, format check, and unit tests. Requires no secrets.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint & format check
+        run: bun run check
+
+      - name: Build (adapter + declarations)
+        run: bun run prepublishOnly
+
+      - name: Unit tests
+        run: bun test
+
+  # Full AWS integration gate. Deploys real infra, runs e2e tests, then destroys.
+  # Reuses the existing integration workflow. Secrets are inherited from the repo
+  # (for Dependabot PRs, AWS_INTEG_ROLE_ARN must be set as a *Dependabot* secret,
+  # since Dependabot-triggered runs cannot read Actions secrets).
+  integration:
+    needs: verify
+    uses: ./.github/workflows/integration.yml
+    secrets: inherit
