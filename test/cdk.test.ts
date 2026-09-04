@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { App, Stack } from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { InvokeMode } from "aws-cdk-lib/aws-lambda";
@@ -221,8 +221,8 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
-        api.addRoutes({ path: "/", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
+        api.addRoutes({ path: "/", methods: [HttpMethod.ANY], integration });
 
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
@@ -245,7 +245,7 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
     });
@@ -267,7 +267,7 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
     });
@@ -289,7 +289,7 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
     });
@@ -313,7 +313,7 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
     });
@@ -335,7 +335,7 @@ describe("SvelteKit with toDefaultOrigin (HTTP API Gateway)", () => {
       buildDirectory,
       toDefaultOrigin: ({ handler }) => {
         const integration = new HttpLambdaIntegration("Integration", handler);
-        api.addRoutes({ path: "/{proxy+}", methods: ["ANY" as never], integration });
+        api.addRoutes({ path: "/{proxy+}", methods: [HttpMethod.ANY], integration });
         return new HttpOrigin("example.execute-api.us-east-1.amazonaws.com");
       },
     });

@@ -1,6 +1,7 @@
 import { expect, it, mock } from "bun:test";
 
 // awslambda is a Lambda runtime global; stub it for the test environment
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stubbing a runtime-only global with simplified test fakes
 (globalThis as unknown as Record<string, unknown>).awslambda = {
   streamifyResponse: (fn: unknown) => fn,
   HttpResponseStream: { from: (stream: unknown) => stream },

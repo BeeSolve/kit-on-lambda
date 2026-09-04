@@ -6,8 +6,10 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResult,
   APIGatewayProxyStructuredResultV2,
-  Context,
+  Context as LambdaContext,
 } from "aws-lambda";
+
+type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
@@ -38,6 +40,7 @@ function makeV1Event(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayP
     multiValueQueryStringParameters: null,
     pathParameters: null,
     stageVariables: null,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- empty requestContext stub; the handler under test never reads it
     requestContext: {} as APIGatewayProxyEvent["requestContext"],
     body: null,
     isBase64Encoded: false,
@@ -85,12 +88,24 @@ function makeContext(overrides: Partial<Context> = {}): Context {
     logGroupName: "/aws/lambda/test",
     logStreamName: "2024/01/01/[$LATEST]test",
     getRemainingTimeInMillis: () => 5000,
-    done: () => {},
-    fail: () => {},
-    succeed: () => {},
     callbackWaitsForEmptyEventLoop: false,
     ...overrides,
   };
+}
+
+// The handler returns a union of the v1 and v2 result shapes. Each test knows
+// which event shape it sent, so these helpers narrow the result to the matching
+// arm at a single audited point instead of scattering assertions across tests.
+type HandlerResult = Awaited<ReturnType<typeof handler>>;
+
+function asV1Result(result: HandlerResult): APIGatewayProxyResult {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test sent a v1 event, so the result is the v1 arm
+  return result as APIGatewayProxyResult;
+}
+
+function asV2Result(result: HandlerResult): APIGatewayProxyStructuredResultV2 {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test sent a v2 event, so the result is the v2 structured arm
+  return result as APIGatewayProxyStructuredResultV2;
 }
 
 describe("node handler", () => {
@@ -105,7 +120,7 @@ describe("node handler", () => {
     it("returns the response status code", async () => {
       mockRespond.mockImplementation(async () => new Response("not found", { status: 404 }));
 
-      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
+      const result = asV1Result(await handler(makeV1Event(), makeContext()));
 
       expect(result.statusCode).toBe(404);
     });
@@ -118,7 +133,7 @@ describe("node handler", () => {
           }),
       );
 
-      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
+      const result = asV1Result(await handler(makeV1Event(), makeContext()));
 
       expect(result.headers?.["content-type"]).toBe("text/plain");
       expect(result.headers?.["x-custom"]).toBe("value");
@@ -132,7 +147,7 @@ describe("node handler", () => {
         return res;
       });
 
-      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
+      const result = asV1Result(await handler(makeV1Event(), makeContext()));
 
       expect(result.headers?.["set-cookie"]).toBeUndefined();
       expect(result.multiValueHeaders?.["set-cookie"]).toEqual([
@@ -146,7 +161,7 @@ describe("node handler", () => {
         async () => new Response("hello world", { headers: { "content-type": "text/plain" } }),
       );
 
-      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
+      const result = asV1Result(await handler(makeV1Event(), makeContext()));
 
       expect(result.body).toBe("hello world");
       expect(result.isBase64Encoded).toBeUndefined();
@@ -158,7 +173,7 @@ describe("node handler", () => {
         async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
       );
 
-      const result = (await handler(makeV1Event(), makeContext())) as APIGatewayProxyResult;
+      const result = asV1Result(await handler(makeV1Event(), makeContext()));
 
       expect(result.isBase64Encoded).toBe(true);
       expect(result.body).toBe(Buffer.from(bytes).toString("base64"));
@@ -169,10 +184,7 @@ describe("node handler", () => {
     it("returns the response status code", async () => {
       mockRespond.mockImplementation(async () => new Response(null, { status: 204 }));
 
-      const result = (await handler(
-        makeV2Event(),
-        makeContext(),
-      )) as APIGatewayProxyStructuredResultV2;
+      const result = asV2Result(await handler(makeV2Event(), makeContext()));
 
       expect(result.statusCode).toBe(204);
     });
@@ -184,10 +196,7 @@ describe("node handler", () => {
         return res;
       });
 
-      const result = (await handler(
-        makeV2Event(),
-        makeContext(),
-      )) as APIGatewayProxyStructuredResultV2;
+      const result = asV2Result(await handler(makeV2Event(), makeContext()));
 
       expect(result.headers?.["set-cookie"]).toBeUndefined();
       expect(result.cookies).toEqual(["sessionId=abc; Path=/"]);
@@ -199,10 +208,7 @@ describe("node handler", () => {
         async () => new Response(bytes, { headers: { "content-type": "image/gif" } }),
       );
 
-      const result = (await handler(
-        makeV2Event(),
-        makeContext(),
-      )) as APIGatewayProxyStructuredResultV2;
+      const result = asV2Result(await handler(makeV2Event(), makeContext()));
 
       expect(result.isBase64Encoded).toBe(true);
       expect(result.body).toBe(Buffer.from(bytes).toString("base64"));
