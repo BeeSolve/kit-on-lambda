@@ -29,28 +29,23 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build
-        run: bun run prepublishOnly
-
-      - name: Open Version PR (when changesets pending)
+      # The Changesets action decides what to do based on pending changesets:
+      #   - If changesets exist  -> runs version-script and opens/updates the
+      #     "Version Packages" PR (which bumps the version and consumes the
+      #     changeset files). It does NOT publish.
+      #   - If no changesets exist (i.e. the Version Packages PR was just merged
+      #     and this push is that merge) -> runs publish-script to publish.
+      # This gating is what makes publish happen only from a committed version
+      # bump on main, never from an ephemeral runner-local bump.
+      - name: Version or publish
         uses: changesets/action@v2
         with:
           version-script: bunx changeset version
+          publish-script: bun run release
+          # Create git tags and GitHub releases after a successful publish.
+          create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ""
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "kit-on-lambda@$VERSION" version 2>/dev/null || echo "")
-          if [ "$PUBLISHED" = "$VERSION" ]; then
-            echo "v$VERSION already published — skipping"
-          else
-            npm publish --provenance --access public
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            bunx changeset git-tag
-            git push --tags
-          fi
+          # Publishing uses npm Trusted Publishing (OIDC): the id-token: write
+          # permission lets npm mint short-lived credentials, so no NPM_TOKEN is
+          # needed. Provenance is enabled via package.json publishConfig.provenance.
