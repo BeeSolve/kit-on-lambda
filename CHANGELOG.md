@@ -1,5 +1,17 @@
 # kit-on-lambda
 
+## 0.8.0
+
+### Minor Changes
+
+- 17d9687: Upgrade toolchain dependencies: TypeScript 6 → 7, `@changesets/cli` 2 → 3, and bump AWS CDK, esbuild, oxlint/oxfmt, and `@beesolve/*` runtime packages.
+
+  TypeScript 7 is the native compiler previously distributed as `@typescript/native-preview` (binary `tsgo`); it now ships as `tsc`. The build's declaration step (`build.ts`) was updated from `tsgo` to `tsc` accordingly, and `@typescript/native-preview` is no longer needed. The release workflow was also updated for Changesets CLI v3 (`changeset tag` → `changeset git-tag`, `version` → `version-script` action input).
+
+### Patch Changes
+
+- a8dc8e9: Align `aws-cdk-lib` and `constructs` version ranges in the `overrides` block with the bumped `peerDependencies` (both to the 2.268 / 10.8 line). Previously the stale override ranges conflicted with the direct dependency, causing `npm publish` to fail with `EOVERRIDE`.
+
 ## 0.7.0
 
 ### Minor Changes
