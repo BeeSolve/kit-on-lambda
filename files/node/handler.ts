@@ -13,17 +13,27 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResult,
   APIGatewayProxyResultV2,
-  Context,
+  Context as LambdaContext,
 } from "aws-lambda";
 import { manifest } from "MANIFEST";
 import { Server } from "SERVER";
 
+type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
+
 const server = new Server(manifest);
 
 await server.init({
-  env: process.env as Record<string, string>,
+  env: definedEnv(process.env),
   read: createReadableStream,
 });
+
+function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const entries: Array<[string, string]> = [];
+  for (const [key, value] of Object.entries(env)) {
+    if (value != null) entries.push([key, value]);
+  }
+  return Object.fromEntries(entries);
+}
 
 export async function handler(
   event: APIGatewayProxyEvent | APIGatewayProxyEventV2,

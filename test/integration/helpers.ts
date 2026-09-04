@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
-  Context,
+  Context as LambdaContext,
 } from "aws-lambda";
+
+type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -16,11 +18,12 @@ export const infraDir = join(examplesDir, "infra");
 const localServers: Array<ReturnType<typeof Bun.serve>> = [];
 
 export function stopLocalServers() {
-  for (const server of localServers) server.stop();
+  for (const server of localServers) void server.stop();
   localServers.length = 0;
 }
 
 export async function deployLocalLambda(functionName: string, serverDir: string): Promise<string> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- typing the shape of a dynamically imported handler module
   const { handler } = (await import(`${serverDir}/handler.js`)) as {
     handler: (
       event: APIGatewayProxyEventV2,
@@ -72,9 +75,6 @@ export async function deployLocalLambda(functionName: string, serverDir: string)
         logGroupName: `/aws/lambda/${functionName}`,
         logStreamName: "2026/[$LATEST]/local",
         getRemainingTimeInMillis: () => 30_000,
-        done: () => {},
-        fail: () => {},
-        succeed: () => {},
         callbackWaitsForEmptyEventLoop: false,
       };
 

@@ -7,9 +7,17 @@ import { Server } from "SERVER";
 
 const server = new Server(manifest);
 await server.init({
-  env: process.env as Record<string, string>,
+  env: definedEnv(process.env),
   read: createReadableStream,
 });
+
+function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  const entries: Array<[string, string]> = [];
+  for (const [key, value] of Object.entries(env)) {
+    if (value != null) entries.push([key, value]);
+  }
+  return Object.fromEntries(entries);
+}
 
 export const handler = asResponseStreamHandler(async (request: Request) => {
   return server.respond(request, {

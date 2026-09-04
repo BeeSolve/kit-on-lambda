@@ -1,20 +1,21 @@
 import { expect, it, mock } from "bun:test";
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stubbing a runtime-only global with simplified test fakes
 (globalThis as unknown as Record<string, unknown>).awslambda = {
   streamifyResponse: (fn: unknown) => fn,
   HttpResponseStream: { from: (stream: unknown) => stream },
 };
 
-mock.module("SERVER", () => ({
+void mock.module("SERVER", () => ({
   Server: class {
     async init() {}
     respond = mock(async () => new Response("ok"));
   },
 }));
 
-mock.module("MANIFEST", () => ({ manifest: {} }));
+void mock.module("MANIFEST", () => ({ manifest: {} }));
 
-mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
+void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
 const { handler } = await import("./stream.js");
 

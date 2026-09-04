@@ -4,10 +4,12 @@ import { assertUnreachable, computeRoutes } from "./util.js";
 
 describe("assertUnreachable", () => {
   it("throws when called", () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- intentionally passing a non-never value to exercise the runtime guard
     expect(() => assertUnreachable("anything" as never)).toThrow("An unreachable state reached!");
   });
 
   it("includes the serialised value in the message", () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- intentionally passing a non-never value to exercise the runtime guard
     expect(() => assertUnreachable({ x: 1 } as never)).toThrow(JSON.stringify({ x: 1 }));
   });
 });

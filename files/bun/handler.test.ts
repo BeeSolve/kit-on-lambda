@@ -1,27 +1,25 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
-import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyStructuredResultV2,
-  Context,
-} from "aws-lambda";
+import type { APIGatewayProxyEventV2, Context as LambdaContext } from "aws-lambda";
+
+type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
     new Response("ok", { headers: { "content-type": "text/plain" } }),
 );
 
-mock.module("SERVER", () => ({
+void mock.module("SERVER", () => ({
   Server: class {
     async init() {}
     respond = mockRespond;
   },
 }));
 
-mock.module("MANIFEST", () => ({ manifest: {} }));
+void mock.module("MANIFEST", () => ({ manifest: {} }));
 
-mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
+void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
 const { handler } = await import("./handler.js");
 
@@ -65,9 +63,6 @@ function makeContext(overrides: Partial<Context> = {}): Context {
     logGroupName: "/aws/lambda/test",
     logStreamName: "2024/01/01/[$LATEST]test",
     getRemainingTimeInMillis: () => 5000,
-    done: () => {},
-    fail: () => {},
-    succeed: () => {},
     callbackWaitsForEmptyEventLoop: false,
     ...overrides,
   };
@@ -84,7 +79,7 @@ describe("bun handler", () => {
   it("returns the response status code", async () => {
     mockRespond.mockImplementation(async () => new Response("not found", { status: 404 }));
 
-    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
+    const result = await handler(makeEvent(), makeContext());
 
     expect(result.statusCode).toBe(404);
   });
@@ -97,7 +92,7 @@ describe("bun handler", () => {
         }),
     );
 
-    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
+    const result = await handler(makeEvent(), makeContext());
 
     expect(result.headers?.["content-type"]).toBe("text/plain");
     expect(result.headers?.["x-custom"]).toBe("value");
@@ -111,7 +106,7 @@ describe("bun handler", () => {
       return res;
     });
 
-    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
+    const result = await handler(makeEvent(), makeContext());
 
     expect(result.headers?.["set-cookie"]).toBeUndefined();
     expect(result.cookies).toEqual(["sessionId=abc; Path=/", "theme=dark; Path=/"]);
@@ -122,7 +117,7 @@ describe("bun handler", () => {
       async () => new Response("hello world", { headers: { "content-type": "text/plain" } }),
     );
 
-    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
+    const result = await handler(makeEvent(), makeContext());
 
     expect(result.body).toBe("hello world");
     expect(result.isBase64Encoded).toBeUndefined();
@@ -134,7 +129,7 @@ describe("bun handler", () => {
       async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
     );
 
-    const result = (await handler(makeEvent(), makeContext())) as APIGatewayProxyStructuredResultV2;
+    const result = await handler(makeEvent(), makeContext());
 
     expect(result.isBase64Encoded).toBe(true);
     expect(result.body).toBe(Buffer.from(bytes).toString("base64"));
