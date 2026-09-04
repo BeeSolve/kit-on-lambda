@@ -16,7 +16,7 @@ export const infraDir = join(examplesDir, "infra");
 const localServers: Array<ReturnType<typeof Bun.serve>> = [];
 
 export function stopLocalServers() {
-  for (const server of localServers) server.stop();
+  for (const server of localServers) void server.stop();
   localServers.length = 0;
 }
 

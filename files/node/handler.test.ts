@@ -14,16 +14,16 @@ const mockRespond = mock(
     new Response("ok", { headers: { "content-type": "text/plain" } }),
 );
 
-mock.module("SERVER", () => ({
+void mock.module("SERVER", () => ({
   Server: class {
     async init() {}
     respond = mockRespond;
   },
 }));
 
-mock.module("MANIFEST", () => ({ manifest: {} }));
+void mock.module("MANIFEST", () => ({ manifest: {} }));
 
-mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
+void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
 const { handler } = await import("./handler.js");
 

@@ -5,16 +5,16 @@ import { expect, it, mock } from "bun:test";
   HttpResponseStream: { from: (stream: unknown) => stream },
 };
 
-mock.module("SERVER", () => ({
+void mock.module("SERVER", () => ({
   Server: class {
     async init() {}
     respond = mock(async () => new Response("ok"));
   },
 }));
 
-mock.module("MANIFEST", () => ({ manifest: {} }));
+void mock.module("MANIFEST", () => ({ manifest: {} }));
 
-mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
+void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
 const { handler } = await import("./stream.js");
 
