@@ -1,7 +1,7 @@
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CfnOutput, Fn, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Stack, type StackProps } from "aws-cdk-lib";
 import type { App } from "aws-cdk-lib";
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
@@ -35,10 +35,11 @@ export class BasicHttpApiNodeStack extends Stack {
           integration,
         });
 
-        // api.apiEndpoint is an unresolved CloudFormation token at synth time,
-        // so `new URL(...)` would throw. Extract the hostname with token-safe
-        // intrinsics: split "https://host/" on "/" and take index 2 (the host).
-        const apiHostname = Fn.select(2, Fn.split("/", api.apiEndpoint));
+        // A CloudFront HttpOrigin needs the API's hostname, but api.apiEndpoint
+        // is a full URL token ("https://<id>.execute-api.<region>.amazonaws.com")
+        // that can't be parsed at synth time. Build the hostname directly from
+        // the API id and stack region instead.
+        const apiHostname = `${api.apiId}.execute-api.${this.region}.amazonaws.com`;
         return new HttpOrigin(apiHostname);
       },
     });
