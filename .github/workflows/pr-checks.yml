@@ -3,6 +3,9 @@ name: PR Checks
 on:
   pull_request:
     branches: [main]
+    # `labeled`/`unlabeled` are included so adding or removing the `run-integ`
+    # label re-evaluates the workflow without needing an extra commit.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
   group: pr-checks-${{ github.ref }}
@@ -30,11 +33,42 @@ jobs:
       - name: Unit tests
         run: bun test
 
-  # Full AWS integration gate. Deploys real infra, runs e2e tests, then destroys.
-  # Reuses the existing integration workflow. Secrets are inherited from the repo
-  # (for Dependabot PRs, AWS_INTEG_ROLE_ARN must be set as a *Dependabot* secret,
-  # since Dependabot-triggered runs cannot read Actions secrets).
+  # Full AWS integration suite (deploy -> e2e -> destroy). This takes ~30 minutes,
+  # so it is opt-in: it only runs when the PR carries the `run-integ` label. Apply
+  # the label to trigger a run (the `labeled` event re-evaluates this workflow);
+  # remove it to skip. Small changes can rely on `verify` alone. Integration also
+  # runs on every push to main via the Integration Tests workflow's own trigger.
+  #
+  # Secrets are inherited from the repo (for Dependabot PRs, AWS_INTEG_ROLE_ARN
+  # must be set as a *Dependabot* secret, since Dependabot-triggered runs cannot
+  # read Actions secrets).
   integration:
     needs: verify
+    if: contains(github.event.pull_request.labels.*.name, 'run-integ')
     uses: ./.github/workflows/integration.yml
     secrets: inherit
+
+  # Always-running gate that reports a single, stable status for the integration
+  # suite. This is the check to mark as required in branch protection (NOT the
+  # `integration` job itself): a conditionally-skipped job never reports a status,
+  # which would deadlock a required check. This job always runs and passes when
+  # integration succeeded OR was intentionally skipped (no label), and fails only
+  # when integration actually ran and did not pass.
+  integration-gate:
+    needs: integration
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce integration result
+        env:
+          RESULT: ${{ needs.integration.result }}
+        run: |
+          case "$RESULT" in
+            success|skipped)
+              echo "Integration gate OK (result: $RESULT)"
+              ;;
+            *)
+              echo "Integration ran and did not pass (result: $RESULT)"
+              exit 1
+              ;;
+          esac
