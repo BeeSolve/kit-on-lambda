@@ -38,11 +38,11 @@ await Promise.all([
 console.timeEnd("build");
 
 console.time("declarations");
-const tsgo = Bun.spawn(["tsgo", "--project", "tsconfig.declarations.json"], {
+const tsc = Bun.spawn(["tsc", "--project", "tsconfig.declarations.json"], {
   stdout: "inherit",
   stderr: "inherit",
 });
-const exitCode = await tsgo.exited;
+const exitCode = await tsc.exited;
 console.timeEnd("declarations");
 
 if (exitCode !== 0) {

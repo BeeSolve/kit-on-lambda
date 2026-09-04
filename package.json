@@ -58,29 +58,28 @@
     "integ:local": "LOCAL_INTEG=1 bun test test/integration/local.test.ts"
   },
   "dependencies": {
-    "@beesolve/lambda-bun-runtime": "^3.10314.0",
-    "@beesolve/lambda-fetch-api": "^2.0.0",
-    "@beesolve/lambda-keep-active": "^2.1.0"
+    "@beesolve/lambda-bun-runtime": "^3.10400.0",
+    "@beesolve/lambda-fetch-api": "^2.1.0",
+    "@beesolve/lambda-keep-active": "^2.1.4"
   },
   "devDependencies": {
-    "@beesolve/lint-config": "^0.2.4",
-    "@changesets/cli": "^2.31.0",
-    "@sveltejs/vite-plugin-svelte": "^7.1.2",
-    "@types/aws-lambda": "^8.10.162",
-    "@types/bun": "^1.3.14",
-    "@types/node": "^26.1.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260702.3",
-    "esbuild": "^0.28.1",
+    "@beesolve/lint-config": "^0.2.6",
+    "@changesets/cli": "^3.0.2",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@types/aws-lambda": "^8.10.163",
+    "@types/bun": "^1.4.0",
+    "@types/node": "^26.4.1",
+    "esbuild": "^0.28.2",
     "husky": "^9.1.7",
     "nano-staged": "^1.0.2",
-    "oxfmt": "^0.57.0",
-    "oxlint": "^1.72.0",
-    "typescript": "^6.0.3"
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "@sveltejs/kit": "^2.68.0",
-    "aws-cdk-lib": "^2.261.0",
-    "constructs": "^10.6.0"
+    "aws-cdk-lib": "^2.268.0",
+    "constructs": "^10.8.1"
   },
   "overrides": {
     "aws-cdk-lib": "^2.261.0",
