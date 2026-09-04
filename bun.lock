@@ -10,7 +10,7 @@
         "@beesolve/lambda-keep-active": "^2.1.4",
       },
       "devDependencies": {
-        "@beesolve/lint-config": "^0.2.6",
+        "@beesolve/lint-config": "^0.3.0",
         "@changesets/cli": "^3.0.2",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@types/aws-lambda": "^8.10.163",
@@ -39,7 +39,7 @@
 
     "@aws-cdk/asset-node-proxy-agent-v6": ["@aws-cdk/asset-node-proxy-agent-v6@2.1.2", "", {}, "sha512-pDiuqH+qY3zM9lhhLjbKJ1tnKOHzQ2V4Wr/3qsxyKeKAkuPMI/BVGvZG1PbrikUw949cGVTfVEt4ETKKYnrj0Q=="],
 
-    "@aws-cdk/cloud-assembly-schema": ["@aws-cdk/cloud-assembly-schema@54.6.0", "", { "dependencies": { "jsonschema": "^1.5.0", "semver": "^7.8.4" } }, "sha512-UBD7wubC9xNq9SFXJMf2QuPvzrMIrf9aaaPheN5hlDdfP0//fWC7B+T8M/We6xrnxHkxdfzO2kyffWAfgHeUpw=="],
+    "@aws-cdk/cloud-assembly-schema": ["@aws-cdk/cloud-assembly-schema@54.21.0", "", { "dependencies": { "jsonschema": "^1.5.0", "semver": "^7.8.5" } }, "sha512-URh+k3/xG+e48lF41qBn/J8TzxwBaHt7Wsg5ZF+W4l76yiPhFmW7atV0BMVrWy7jh4SGO+yCuuqJe+CNjSk31w=="],
 
     "@aws-sdk/client-lambda": ["@aws-sdk/client-lambda@3.1126.0", "", { "dependencies": { "@aws-sdk/core": "^3.977.9", "@aws-sdk/credential-provider-node": "^3.972.82", "@aws-sdk/types": "^3.974.5", "@smithy/core": "^3.33.3", "@smithy/fetch-http-handler": "^5.7.2", "@smithy/node-http-handler": "^4.11.3", "@smithy/types": "^4.17.2", "tslib": "^2.6.2" } }, "sha512-XygPrTShLUmccumtD7Bh7dYzD1qD6YKlF8b+zdt+HPx6SFONYnqZfbhcPMAT1Kp0BIXOez73vVbDkCq0iREz5w=="],
 
@@ -85,7 +85,7 @@
 
     "@beesolve/lambda-keep-active": ["@beesolve/lambda-keep-active@2.1.4", "", { "dependencies": { "@aws-sdk/client-lambda": "^3.1124.0", "@aws-sdk/client-resource-groups-tagging-api": "^3.1124.0", "@beesolve/cdk-constructs": "^0.3.0" }, "peerDependencies": { "aws-cdk-lib": "^2.267.0", "constructs": "^10.8.1" } }, "sha512-I+Wmn4M0QgMPY20BEJihDp5hO7EM8D04fI3jVM0Ped6jaA7tBiTxg7TUwA3967srTxeEuKfNLsRpoZ3mzb1fHA=="],
 
-    "@beesolve/lint-config": ["@beesolve/lint-config@0.2.6", "", { "dependencies": { "oxlint-plugin-eslint": "^1.75.0" }, "peerDependencies": { "oxfmt": ">=0.1.0", "oxlint": ">=1.0.0" }, "optionalPeers": ["oxfmt", "oxlint"], "bin": { "beesolve-lint-setup": "scripts/setup.ts" } }, "sha512-iv2IXDZzkFG23z0MaswRzjn/SBJlPjRBjSLiKoFdgS5xPPGtdhY6lruTooe+1deBGJwEax0SgWBtYLimIB8+jA=="],
+    "@beesolve/lint-config": ["@beesolve/lint-config@0.3.0", "", { "dependencies": { "oxlint-plugin-eslint": "^1.76.0" }, "peerDependencies": { "oxfmt": ">=0.1.0", "oxlint": ">=1.0.0", "oxlint-tsgolint": ">=7.0.0" }, "optionalPeers": ["oxfmt", "oxlint", "oxlint-tsgolint"], "bin": { "beesolve-lint-setup": "scripts/setup.ts" } }, "sha512-wVO80w55mg7N0qtbk/mybBS0JFg5uRNdWupgx6pZb9KPJWZ4JBhYWPBviuUVLuV2BDIP/aTmGz1NyISxTGWngw=="],
 
     "@changesets/apply-release-plan": ["@changesets/apply-release-plan@8.1.0", "", { "dependencies": { "@changesets/config": "^4.0.0", "@changesets/format": "^0.1.2", "@changesets/git": "^4.0.1", "@changesets/should-skip-package": "^1.0.0", "@changesets/types": "^7.0.0", "import-meta-resolve": "^4.2.0", "jsonc-parser": "^3.3.1", "semver": "^7.8.1" } }, "sha512-M93HOGyX3ssg6He3b5NotaHtQVu6uajHS6UIQ28xKt2RzskCy73ayX4I914qBKjTJmrE4YFlELQjfcqxbmGLJw=="],
 
