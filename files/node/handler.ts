@@ -7,6 +7,7 @@ import {
   isAPIGatewayProxyEvent,
   runWithAwsContext,
 } from "@beesolve/lambda-fetch-api";
+import { keptActive } from "@beesolve/lambda-keep-active/runtime";
 import { createReadableStream } from "@sveltejs/kit/node";
 import type {
   APIGatewayProxyEvent,
@@ -35,7 +36,7 @@ function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
-export async function handler(
+export const handler = keptActive(async function respond(
   event: APIGatewayProxyEvent | APIGatewayProxyEventV2,
   context: Context,
 ): Promise<APIGatewayProxyResult | APIGatewayProxyResultV2> {
@@ -54,4 +55,4 @@ export async function handler(
       ...(await awsResponseBody(response)),
     };
   });
-}
+});

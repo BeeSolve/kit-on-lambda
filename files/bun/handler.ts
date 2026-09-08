@@ -1,6 +1,7 @@
 import process from "node:process";
 
 import { asHttpV2Handler } from "@beesolve/lambda-fetch-api";
+import { keptActive } from "@beesolve/lambda-keep-active/runtime";
 import { createReadableStream } from "@sveltejs/kit/node";
 import { manifest } from "MANIFEST";
 import { Server } from "SERVER";
@@ -20,10 +21,12 @@ function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
-export const handler = asHttpV2Handler(async (request: Request) => {
-  return server.respond(request, {
-    getClientAddress() {
-      return request.headers.get("x-forwarded-for") ?? "";
-    },
-  });
-});
+export const handler = keptActive(
+  asHttpV2Handler(async (request: Request) => {
+    return server.respond(request, {
+      getClientAddress() {
+        return request.headers.get("x-forwarded-for") ?? "";
+      },
+    });
+  }),
+);

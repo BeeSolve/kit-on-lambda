@@ -271,4 +271,16 @@ describe("node handler", () => {
       expect(capturedContext).toBe(context);
     });
   });
+
+  describe("keep-active", () => {
+    it("short-circuits keep-active pings without rendering", async () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keep-active pings arrive as a non-HTTP event payload
+      const pingEvent = { $$keepActivePing$$: true } as unknown as APIGatewayProxyEventV2;
+
+      const result = await handler(pingEvent, makeContext());
+
+      expect(result).toBeUndefined();
+      expect(mockRespond).not.toHaveBeenCalled();
+    });
+  });
 });

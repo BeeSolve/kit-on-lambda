@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
-import type { APIGatewayProxyEventV2, Context as LambdaContext } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+  Context as LambdaContext,
+} from "aws-lambda";
 
 type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
 
@@ -22,6 +26,17 @@ void mock.module("MANIFEST", () => ({ manifest: {} }));
 void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
 const { handler } = await import("./handler.js");
+
+// The handler's result type includes a `void` arm from the keep-active wrapper
+// (a keep-active ping short-circuits before rendering). Every test here sends a
+// real HTTP event, so it narrows the result to the v2 structured arm at a single
+// audited point instead of scattering assertions.
+type HandlerResult = Awaited<ReturnType<typeof handler>>;
+
+function asV2Result(result: HandlerResult): APIGatewayProxyStructuredResultV2 {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test sent a real v2 event, so the result is the v2 structured arm
+  return result as APIGatewayProxyStructuredResultV2;
+}
 
 function makeEvent(overrides: Partial<APIGatewayProxyEventV2> = {}): APIGatewayProxyEventV2 {
   return {
@@ -79,7 +94,7 @@ describe("bun handler", () => {
   it("returns the response status code", async () => {
     mockRespond.mockImplementation(async () => new Response("not found", { status: 404 }));
 
-    const result = await handler(makeEvent(), makeContext());
+    const result = asV2Result(await handler(makeEvent(), makeContext()));
 
     expect(result.statusCode).toBe(404);
   });
@@ -92,7 +107,7 @@ describe("bun handler", () => {
         }),
     );
 
-    const result = await handler(makeEvent(), makeContext());
+    const result = asV2Result(await handler(makeEvent(), makeContext()));
 
     expect(result.headers?.["content-type"]).toBe("text/plain");
     expect(result.headers?.["x-custom"]).toBe("value");
@@ -106,7 +121,7 @@ describe("bun handler", () => {
       return res;
     });
 
-    const result = await handler(makeEvent(), makeContext());
+    const result = asV2Result(await handler(makeEvent(), makeContext()));
 
     expect(result.headers?.["set-cookie"]).toBeUndefined();
     expect(result.cookies).toEqual(["sessionId=abc; Path=/", "theme=dark; Path=/"]);
@@ -117,7 +132,7 @@ describe("bun handler", () => {
       async () => new Response("hello world", { headers: { "content-type": "text/plain" } }),
     );
 
-    const result = await handler(makeEvent(), makeContext());
+    const result = asV2Result(await handler(makeEvent(), makeContext()));
 
     expect(result.body).toBe("hello world");
     expect(result.isBase64Encoded).toBeUndefined();
@@ -129,7 +144,7 @@ describe("bun handler", () => {
       async () => new Response(bytes, { headers: { "content-type": "image/png" } }),
     );
 
-    const result = await handler(makeEvent(), makeContext());
+    const result = asV2Result(await handler(makeEvent(), makeContext()));
 
     expect(result.isBase64Encoded).toBe(true);
     expect(result.body).toBe(Buffer.from(bytes).toString("base64"));
@@ -186,5 +201,15 @@ describe("bun handler", () => {
     await handler(makeEvent(), context);
 
     expect(capturedContext).toBe(context);
+  });
+
+  it("short-circuits keep-active pings without rendering", async () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keep-active pings arrive as a non-HTTP event payload
+    const pingEvent = { $$keepActivePing$$: true } as unknown as APIGatewayProxyEventV2;
+
+    const result = await handler(pingEvent, makeContext());
+
+    expect(result).toBeUndefined();
+    expect(mockRespond).not.toHaveBeenCalled();
   });
 });
