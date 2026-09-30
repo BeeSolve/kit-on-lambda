@@ -7,13 +7,11 @@ import { expect, it, mock } from "bun:test";
 };
 
 void mock.module("SERVER", () => ({
-  Server: class {
-    async init() {}
-    respond = mock(async () => new Response("ok"));
+  server: {
+    async init() {},
+    respond: mock(async () => new Response("ok")),
   },
 }));
-
-void mock.module("MANIFEST", () => ({ manifest: {} }));
 
 void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 

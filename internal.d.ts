@@ -1,8 +1,4 @@
 declare module "SERVER" {
-  export { Server } from "@sveltejs/kit";
-}
-
-declare module "MANIFEST" {
-  import type { SSRManifest } from "@sveltejs/kit";
-  export const manifest: SSRManifest;
+  import type { Server } from "@sveltejs/kit";
+  export const server: Server;
 }

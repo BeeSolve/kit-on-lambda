@@ -2,10 +2,8 @@ import process from "node:process";
 
 import { asResponseStreamHandler } from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
-import { manifest } from "MANIFEST";
-import { Server } from "SERVER";
+import { server } from "SERVER";
 
-const server = new Server(manifest);
 await server.init({
   env: definedEnv(process.env),
   read: createReadableStream,

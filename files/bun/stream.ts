@@ -5,10 +5,7 @@ import process from "node:process";
 // once @beesolve/lambda-bun-runtime implements the streaming protocol.
 import { asHttpV2Handler } from "@beesolve/lambda-fetch-api";
 import { createReadableStream } from "@sveltejs/kit/node";
-import { manifest } from "MANIFEST";
-import { Server } from "SERVER";
-
-const server = new Server(manifest);
+import { server } from "SERVER";
 
 await server.init({
   env: definedEnv(process.env),

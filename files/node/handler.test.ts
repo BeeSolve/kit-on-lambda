@@ -17,13 +17,11 @@ const mockRespond = mock(
 );
 
 void mock.module("SERVER", () => ({
-  Server: class {
-    async init() {}
-    respond = mockRespond;
+  server: {
+    async init() {},
+    respond: mockRespond,
   },
 }));
-
-void mock.module("MANIFEST", () => ({ manifest: {} }));
 
 void mock.module("@sveltejs/kit/node", () => ({ createReadableStream: () => {} }));
 
