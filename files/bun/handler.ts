@@ -3,10 +3,7 @@ import process from "node:process";
 import { asHttpV2Handler } from "@beesolve/lambda-fetch-api";
 import { keptActive } from "@beesolve/lambda-keep-active/runtime";
 import { createReadableStream } from "@sveltejs/kit/node";
-import { manifest } from "MANIFEST";
-import { Server } from "SERVER";
-
-const server = new Server(manifest);
+import { server } from "SERVER";
 
 await server.init({
   env: definedEnv(process.env),

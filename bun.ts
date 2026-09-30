@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { Adapter, Builder } from "@sveltejs/kit";
@@ -46,14 +46,14 @@ export default (options: AdapterOptions = {}): Adapter => {
     async adapt(builder: Builder) {
       const tmp = builder.getBuildDirectory("adapter-bun-build-lambda");
 
-      builder.rimraf(out);
-      builder.rimraf(tmp);
-      builder.mkdirp(tmp);
+      rmSync(out, { force: true, recursive: true });
+      rmSync(tmp, { force: true, recursive: true });
+      mkdirSync(tmp, { recursive: true });
 
       builder.log.minor("Copying assets");
-      const clientFiles = builder.writeClient(`${out}/client${builder.config.kit.paths.base}`);
+      const clientFiles = builder.writeClient(`${out}/client${builder.config.paths.base}`);
       const prerenderedFiles = builder.writePrerendered(
-        `${out}/prerendered${builder.config.kit.paths.base}`,
+        `${out}/prerendered${builder.config.paths.base}`,
       );
 
       if (precompress) {
@@ -67,20 +67,11 @@ export default (options: AdapterOptions = {}): Adapter => {
       builder.log.minor("Building server");
 
       builder.writeServer(tmp);
-
-      writeFileSync(
-        `${tmp}/manifest.js`,
-        [
-          `export const manifest = ${builder.generateManifest({ relativePath: "./" })};`,
-          `export const prerendered = new Set(${JSON.stringify(builder.prerendered.paths)});`,
-          `export const base = ${JSON.stringify(builder.config.kit.paths.base)};`,
-        ].join("\n\n"),
-      );
+      builder.generateServerInstance(`${tmp}/server.js`, { serverDirectory: tmp });
 
       const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
-      const substitute = (src: string) =>
-        src.replaceAll('"SERVER"', '"./index.js"').replaceAll('"MANIFEST"', '"./manifest.js"');
+      const substitute = (src: string) => src.replaceAll('"SERVER"', '"./server.js"');
 
       writeFileSync(
         `${tmp}/handler.ts`,
@@ -92,14 +83,20 @@ export default (options: AdapterOptions = {}): Adapter => {
       );
 
       const input: Record<string, string> = {
-        index: `${tmp}/index.js`,
-        manifest: `${tmp}/manifest.js`,
         handler: `${tmp}/handler.ts`,
         stream: `${tmp}/stream.ts`,
       };
 
-      if (builder.hasServerInstrumentationFile?.()) {
+      const hasInstrumentation = builder.hasServerInstrumentationFile();
+      let initializer: string | undefined;
+
+      if (hasInstrumentation) {
         input["instrumentation.server"] = `${tmp}/instrumentation.server.js`;
+        initializer = builder.createInstrumentationInitializer({
+          outputDirectory: tmp,
+          serverDirectory: tmp,
+        });
+        input.initializer = initializer;
       }
 
       const result = await Bun.build({
@@ -123,14 +120,18 @@ export default (options: AdapterOptions = {}): Adapter => {
         writeFileSync(`${out}/server/package.json`, JSON.stringify({ type: "module" }));
       }
 
-      if (builder.hasServerInstrumentationFile?.()) {
-        builder.instrument?.({
-          entrypoint: `${out}/index.js`,
-          instrumentation: `${out}/server/instrumentation.server.js`,
-          module: {
-            exports: ["path", "host", "port", "server"],
-          },
-        });
+      if (hasInstrumentation && initializer != null) {
+        for (const entry of ["handler", "stream"]) {
+          builder.instrument({
+            entrypoint: `${out}/server/${entry}.js`,
+            instrumentation: `${out}/server/instrumentation.server.js`,
+            initializer: `${out}/server/${basename(initializer)}`,
+            start: `${out}/server/${entry}.start.js`,
+            module: {
+              exports: ["handler"],
+            },
+          });
+        }
       }
 
       writeFileSync(

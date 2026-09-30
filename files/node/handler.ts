@@ -16,12 +16,9 @@ import type {
   APIGatewayProxyResultV2,
   Context as LambdaContext,
 } from "aws-lambda";
-import { manifest } from "MANIFEST";
-import { Server } from "SERVER";
+import { server } from "SERVER";
 
 type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
-
-const server = new Server(manifest);
 
 await server.init({
   env: definedEnv(process.env),

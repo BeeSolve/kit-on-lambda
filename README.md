@@ -105,30 +105,29 @@ adapter locally, see
 The default adapter. Uses esbuild to bundle the server and deploys to the official Node.js Lambda runtime.
 
 ```ts
-// svelte.config.js
-import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+// vite.config.ts
 import adapter from "kit-on-lambda";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
 
-/** @type {import('@sveltejs/kit').Config} */
-const config = {
-  preprocess: vitePreprocess(),
-  kit: {
-    adapter: adapter(),
-    // Emit root-absolute asset paths so nested routes load assets correctly.
-    // See "Asset paths" for the CloudFront-URL alternative.
-    paths: { relative: false },
-  },
-};
-
-export default config;
+export default defineConfig({
+  plugins: [
+    sveltekit({
+      adapter: adapter(),
+      // Emit root-absolute asset paths so nested routes load assets correctly.
+      // See "Asset paths" for the CloudFront-URL alternative.
+      paths: { relative: false },
+    }),
+  ],
+});
 ```
 
 > [!NOTE]
-> Setting `kit.paths.assets` to the CloudFront URL is **optional**. See
+> Setting `paths.assets` to the CloudFront URL is **optional**. See
 > [Asset paths](#asset-paths--pathsrelative-vs-pathsassets) below for the
 > trade-offs and for a configuration that does not require knowing the
-> distribution URL at build time. If you do set `kit.paths.assets`, also add the
-> same URL to `kit.csrf.trustedOrigins`.
+> distribution URL at build time. If you do set `paths.assets`, also add the
+> same URL to `csrf.trustedOrigins` and set `paths.origin`.
 
 ### Asset paths — `paths.relative` vs `paths.assets`
 
@@ -147,12 +146,12 @@ You have two ways to make SvelteKit emit URLs that work behind this setup:
 #### Recommended: `paths.relative: false` (no CloudFront URL required)
 
 ```ts
-// svelte.config.js
-kit: {
+// vite.config.ts
+sveltekit({
   adapter: adapter(),
   // Emit root-absolute asset paths (/_app/...) instead of relative (./_app/...).
   paths: { relative: false },
-}
+});
 ```
 
 With this, SvelteKit writes `/_app/...`, which CloudFront routes to S3 via the behaviors
@@ -164,14 +163,14 @@ single-distribution deployment.
 #### Alternative: `paths.assets` = CloudFront URL
 
 ```ts
-// svelte.config.js
+// vite.config.ts
 const originUrl = "https://{distributionId}.cloudfront.net";
 
-kit: {
+sveltekit({
   adapter: adapter(),
-  paths: { assets: originUrl },
+  paths: { assets: originUrl, origin: originUrl },
   csrf: { trustedOrigins: [originUrl] },
-}
+});
 ```
 
 This rewrites every asset URL to an absolute `https://{distributionId}.cloudfront.net/_app/...`.
@@ -179,7 +178,8 @@ Use it when you serve assets from a **different** origin/domain than the app, or
 need fully-qualified asset URLs (e.g. embedding the app under another domain). Because
 the URL must be baked in at build time, you have to deploy once to learn the distribution
 URL, then set it and redeploy. When you set `paths.assets`, add the same URL to
-`csrf.trustedOrigins` so form actions and CSRF checks accept the origin.
+`csrf.trustedOrigins` and set `paths.origin` so v3's always-on CSRF check accepts
+cross-origin form and remote-function submissions.
 
 > [!WARNING]
 > Do **not** leave `paths.relative` at its default (`true`) without setting
@@ -252,7 +252,7 @@ Install [`@beesolve/lambda-fetch-api`](https://www.npmjs.com/package/@beesolve/l
 
 ```ts
 // hooks.server.ts
-import type { Handle } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
 import {
   getAwsContext,
   getAwsEvent,
@@ -282,21 +282,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime).
 
 ```ts
-// svelte.config.js
-import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+// vite.config.ts
 import adapter from "kit-on-lambda/bun";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
 
-/** @type {import('@sveltejs/kit').Config} */
-const config = {
-  preprocess: vitePreprocess(),
-  kit: {
-    adapter: adapter({ runtime: "bun" }),
-    // See "Asset paths" for the CloudFront-URL alternative.
-    paths: { relative: false },
-  },
-};
-
-export default config;
+export default defineConfig({
+  plugins: [
+    sveltekit({
+      adapter: adapter({ runtime: "bun" }),
+      // See "Asset paths" for the CloudFront-URL alternative.
+      paths: { relative: false },
+    }),
+  ],
+});
 ```
 
 ```ts
@@ -328,21 +327,20 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful when you want Bun's faster build times without requiring a custom Lambda layer.
 
 ```ts
-// svelte.config.js
-import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+// vite.config.ts
 import adapter from "kit-on-lambda/bun";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
 
-/** @type {import('@sveltejs/kit').Config} */
-const config = {
-  preprocess: vitePreprocess(),
-  kit: {
-    adapter: adapter({ runtime: "node" }),
-    // See "Asset paths" for the CloudFront-URL alternative.
-    paths: { relative: false },
-  },
-};
-
-export default config;
+export default defineConfig({
+  plugins: [
+    sveltekit({
+      adapter: adapter({ runtime: "node" }),
+      // See "Asset paths" for the CloudFront-URL alternative.
+      paths: { relative: false },
+    }),
+  ],
+});
 ```
 
 ```ts
