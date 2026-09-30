@@ -9,6 +9,6 @@ const adapter =
     ? (await import("kit-on-lambda/bun")).default({ out, runtime: "node" })
     : (await import("kit-on-lambda")).default({ out });
 
-export default defineConfig({
-  plugins: [sveltekit({ adapter })],
-});
+export default defineConfig(async () => ({
+  plugins: [await sveltekit({ adapter })],
+}));
