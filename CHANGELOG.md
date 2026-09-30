@@ -1,5 +1,12 @@
 # kit-on-lambda
 
+## 0.8.4
+
+### Patch Changes
+
+- 4e6bf50: Bump @beesolve/lambda-bun-runtime, @beesolve/lambda-fetch-api, @beesolve/lambda-keep-active (version-update:semver-minor)
+- 1f3abda: Bump @beesolve/lint-config, @changesets/cli, @sveltejs/vite-plugin-svelte, @types/bun, @types/node, oxfmt, oxlint, oxlint-tsgolint (version-update:semver-minor)
+
 ## 0.8.3
 
 ### Patch Changes
