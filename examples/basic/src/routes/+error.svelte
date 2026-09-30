@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from "$app/state";
 </script>
 
-<svelte:head><title>{$page.status} — kit-on-lambda</title></svelte:head>
+<svelte:head><title>{page.status} — kit-on-lambda</title></svelte:head>
 
-<h1>{$page.status}</h1>
-<p>{$page.error?.message}</p>
+<h1>{page.status}</h1>
+<p>{page.error?.message}</p>
