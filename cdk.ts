@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
@@ -232,9 +232,22 @@ export class SvelteKit extends Construct {
       });
     }
 
+    // The client build is always present. Prerendered pages (if any) are
+    // emitted to a sibling `prerendered/` directory and must be uploaded to the
+    // same bucket so their routes (already registered from `routes.json`) are
+    // served statically. Guard the directory so synth does not fail when no
+    // route is prerendered.
+    const prerenderedDirectory = `${buildDirectory}/prerendered`;
+    const hasPrerendered =
+      existsSync(prerenderedDirectory) && readdirSync(prerenderedDirectory).length > 0;
+    const sources = [Source.asset(`${buildDirectory}/client`)];
+    if (hasPrerendered) {
+      sources.push(Source.asset(prerenderedDirectory));
+    }
+
     new BucketDeployment(this, "Deployment", {
       destinationBucket: bucket,
-      sources: [Source.asset(`${buildDirectory}/client`)],
+      sources,
       distribution,
       memoryLimit: 3008,
     });

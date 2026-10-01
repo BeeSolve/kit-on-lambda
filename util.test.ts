@@ -23,31 +23,61 @@ describe("computeRoutes", () => {
     expect(computeRoutes(["favicon.ico", "robots.txt"])).toEqual(["favicon.ico", "robots.txt"]);
   });
 
-  it("converts a one-level-deep directory to a wildcard", () => {
-    expect(computeRoutes(["_app/bundle.js"])).toEqual(["_app/*"]);
+  it("keeps a one-level-deep file as an exact route", () => {
+    expect(computeRoutes(["_app/version.json"])).toEqual(["_app/version.json"]);
   });
 
-  it("excludes files nested more than one level deep", () => {
-    expect(computeRoutes(["_app/immutable/chunks/vendor.js"])).toEqual([]);
+  it("collapses files nested two or more levels deep to a two-segment wildcard", () => {
+    expect(computeRoutes(["_app/immutable/chunks/vendor.js"])).toEqual(["_app/immutable/*"]);
   });
 
-  it("deduplicates multiple files from the same directory", () => {
-    expect(computeRoutes(["_app/a.js", "_app/b.js", "_app/c.js"])).toEqual(["_app/*"]);
+  it("deduplicates multiple files from the same nested directory", () => {
+    expect(computeRoutes(["_app/immutable/a.js", "_app/immutable/b.js"])).toEqual([
+      "_app/immutable/*",
+    ]);
   });
 
-  it("handles a mix of root files, shallow dirs, and nested files", () => {
+  it("never emits a bare one-segment wildcard that would shadow dynamic _app routes", () => {
+    // SvelteKit serves remote functions at `_app/remote/*` via the Lambda.
+    // A greedy `_app/*` S3 route would shadow them; the computed routes must
+    // not match that dynamic path so it falls through to the default behaviour.
+    const routes = computeRoutes([
+      "_app/version.json",
+      "_app/immutable/entry/app.js",
+      "_app/immutable/chunks/vendor.js",
+    ]);
+    expect(routes).not.toContain("_app/*");
+    const matchesRemote = routes.some((route) =>
+      route.endsWith("/*") ? "_app/remote/listGroups".startsWith(route.slice(0, -1)) : false,
+    );
+    expect(matchesRemote).toBe(false);
+  });
+
+  it("handles a mix of root files, one-level files, and nested files", () => {
     const files = [
       "favicon.ico",
-      "_app/bundle.js",
+      "_app/version.json",
       "_app/immutable/chunks/vendor.js",
       "about/index.html",
     ];
-    expect(computeRoutes(files)).toEqual(["favicon.ico", "_app/*", "about/*"]);
+    expect(computeRoutes(files)).toEqual([
+      "favicon.ico",
+      "_app/version.json",
+      "_app/immutable/*",
+      "about/index.html",
+    ]);
   });
 
-  it("deduplicates wildcards from client and prerendered files in the same dir", () => {
-    const clientFiles = ["_app/client.js"];
-    const prerenderedFiles = ["_app/prerendered.js"];
-    expect(computeRoutes([...clientFiles, ...prerenderedFiles])).toEqual(["_app/*"]);
+  it("keeps a prerendered root document as an exact index.html route", () => {
+    expect(computeRoutes(["index.html", "_app/immutable/entry/app.js"])).toEqual([
+      "index.html",
+      "_app/immutable/*",
+    ]);
+  });
+
+  it("deduplicates wildcards from client and prerendered files in the same nested dir", () => {
+    const clientFiles = ["_app/immutable/client.js"];
+    const prerenderedFiles = ["_app/immutable/prerendered.js"];
+    expect(computeRoutes([...clientFiles, ...prerenderedFiles])).toEqual(["_app/immutable/*"]);
   });
 });
