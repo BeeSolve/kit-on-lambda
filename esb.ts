@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,7 +6,12 @@ import { fileURLToPath } from "node:url";
 import type { Adapter, Builder } from "@sveltejs/kit";
 import { build } from "esbuild";
 
-import { computeRoutes } from "./util.js";
+import {
+  computeRoutes,
+  detectPackageManager,
+  installCommand,
+  resolveExternalDependencies,
+} from "./util.js";
 
 interface AdapterOptions {
   /**
@@ -22,6 +28,20 @@ interface AdapterOptions {
    * @default "node"
    */
   runtime?: "node";
+  /**
+   * Packages to leave unbundled (passed through to esbuild's `external`).
+   *
+   * The server is otherwise fully bundled. Mark a dependency external when it
+   * must stay a runtime `import` rather than being inlined — most notably for
+   * OpenTelemetry auto-instrumentation: `import-in-the-middle` can only patch
+   * modules that are still real `import`s at runtime, so packages you want
+   * auto-instrumented (and the instrumentation packages themselves) must be
+   * listed here and shipped in `node_modules` alongside the handler.
+   *
+   * @example ["@opentelemetry/*", "import-in-the-middle", "require-in-the-middle"]
+   * @default []
+   */
+  external?: Array<string>;
   /**
    * Options for esbuild build
    */
@@ -40,7 +60,7 @@ interface AdapterOptions {
 const files = fileURLToPath(new URL("./files", import.meta.url).href);
 
 export default (options: AdapterOptions = {}): Adapter => {
-  const { out = "build", precompress = true } = options;
+  const { out = "build", precompress = true, external = [] } = options;
   const sourcemap = options.buildOptions?.sourcemap ?? "linked";
 
   return {
@@ -105,7 +125,7 @@ export default (options: AdapterOptions = {}): Adapter => {
         charset: "utf8",
         mainFields: ["module", "main"],
         resolveExtensions: [".ts", ".mjs", ".js", ".json"],
-        external: [],
+        external,
         target: "node24",
         bundle: true,
         platform: "node",
@@ -123,7 +143,11 @@ export default (options: AdapterOptions = {}): Adapter => {
         },
       });
 
-      writeFileSync(`${out}/server/package.json`, JSON.stringify({ type: "module" }));
+      writeExternalManifest({
+        builder,
+        external,
+        serverDir: `${out}/server`,
+      });
 
       if (hasInstrumentation && initializer != null) {
         for (const entry of ["handler", "stream"]) {
@@ -151,3 +175,38 @@ export default (options: AdapterOptions = {}): Adapter => {
     },
   };
 };
+
+/**
+ * Write `server/package.json`. The server bundle is always ESM, so it always
+ * declares `"type": "module"`. When the adapter was given `external` packages,
+ * those are resolved to pinned versions and installed into `server/node_modules`
+ * so they are shipped alongside the handler (the Lambda bundles the whole
+ * `server/` directory). This is required for OpenTelemetry auto-instrumentation,
+ * which can only patch packages that remain real runtime `import`s.
+ */
+function writeExternalManifest(props: {
+  builder: Builder;
+  external: Array<string>;
+  serverDir: string;
+}): void {
+  const { builder, external, serverDir } = props;
+
+  const dependencies = resolveExternalDependencies({
+    external,
+    nodeModulesDir: join(process.cwd(), "node_modules"),
+  });
+
+  writeFileSync(
+    join(serverDir, "package.json"),
+    JSON.stringify({ type: "module", private: true, dependencies }, null, 2),
+  );
+
+  const names = Object.keys(dependencies);
+  if (names.length === 0) return;
+
+  const manager = detectPackageManager(process.cwd());
+  const [command, ...args] = installCommand(manager);
+  builder.log.minor(`Installing ${names.length} external package(s) into server/ with ${manager}`);
+  if (command == null) return;
+  execFileSync(command, args, { cwd: serverDir, stdio: "inherit" });
+}

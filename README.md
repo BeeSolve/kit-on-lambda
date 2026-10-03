@@ -277,6 +277,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
+> [!NOTE]
+> You do **not** need `ssr.external: ["@beesolve/lambda-fetch-api"]` in your Vite
+> config with this adapter. `getAwsEvent()` / `getAwsContext()` rely on a single
+> shared `AsyncLocalStorage` store, which only works if the handler and your app
+> code reference the same module instance. This adapter builds the Lambda handler
+> and SvelteKit's SSR server as **one** bundle, so `@beesolve/lambda-fetch-api` is
+> deduplicated into a single module instance and the store is shared
+> automatically. (Marking it `ssr.external` was a workaround required by older
+> setups where SvelteKit's SSR output and the handler were separate module graphs
+> and the package was duplicated, splitting the store.)
+
 ## Option 2 — build with Bun, run on Bun runtime
 
 Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime).
@@ -413,6 +424,106 @@ The construct exposes:
 
 - `handler` — the Lambda function.
 - `distribution` — the CloudFront distribution.
+
+## Observability (OpenTelemetry tracing)
+
+SvelteKit 3 can emit [first-party OpenTelemetry spans](https://svelte.dev/blog/sveltekit-integrated-observability)
+for the handle hook, `load` functions, form actions, and remote functions. This
+adapter supports the full flow on Lambda, including the `src/instrumentation.server.ts`
+file that SvelteKit guarantees to load before any application code.
+
+A complete, runnable reference lives in
+[`examples/observability`](./examples/observability).
+
+### 1. Enable tracing
+
+Turn on SvelteKit's server tracing in `vite.config.ts`:
+
+```ts
+// vite.config.ts
+import adapter from "kit-on-lambda";
+import { sveltekit } from "@sveltejs/kit/vite";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [
+    sveltekit({
+      adapter: adapter({
+        // Keep the OpenTelemetry packages unbundled — see "Why external" below.
+        external: ["@opentelemetry/*", "import-in-the-middle", "require-in-the-middle"],
+      }),
+      tracing: { server: true },
+      paths: { relative: false },
+    }),
+  ],
+});
+```
+
+### 2. Add `src/instrumentation.server.ts`
+
+Start an OpenTelemetry SDK. The adapter ensures this file runs before any app
+code, which is the ESM requirement for auto-instrumentation:
+
+```ts
+// src/instrumentation.server.ts
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+
+const sdk = new NodeSDK({
+  serviceName: process.env.OTEL_SERVICE_NAME ?? "my-sveltekit-app",
+  traceExporter: new OTLPTraceExporter(),
+  instrumentations: [getNodeAutoInstrumentations()],
+});
+
+sdk.start();
+```
+
+A request now emits `sveltekit.handle.root` → `sveltekit.resolve` →
+`sveltekit.load` (plus any spans from auto-instrumented libraries).
+
+> [!IMPORTANT]
+> Do **not** call `module.register("import-in-the-middle/hook.mjs", ...)` yourself,
+> even though the SvelteKit blog post shows it. On Node 24+/26 that call emits
+> `DEP0205 DeprecationWarning: module.register() is deprecated`, and registering
+> `import-in-the-middle` manually can double-register the loader and break
+> SvelteKit's dynamic route loading. The OpenTelemetry SDK registers
+> `import-in-the-middle` for you, and a current `import-in-the-middle`
+> (≥ 3.5, pulled in transitively by `@opentelemetry/instrumentation`) uses the
+> synchronous, non-deprecated `module.registerHooks()` API on supported runtimes.
+> Keeping the OTel packages up to date is all that's needed to stay DEP0205-free.
+
+### Why `external` for the OpenTelemetry packages?
+
+SvelteKit's own spans work even when everything is bundled: they go through the
+bare-specifier `@opentelemetry/api` that the server bundle already shares, so the
+SDK's global tracer provider sees them.
+
+Third-party **auto-instrumentation** is different. `import-in-the-middle` can only
+patch modules that are still real runtime `import`s — if the OTel packages are
+inlined into the server bundle, there is nothing left to intercept. Listing them
+in the adapter's `external` option keeps them as runtime imports. The adapter then:
+
+- resolves each pattern (`@opentelemetry/*`, exact names, trailing-`*` prefixes)
+  against the packages installed in your project's `node_modules`,
+- pins the matched versions into `build/server/package.json`, and
+- installs them into `build/server/node_modules` using your package manager, so
+  they ship inside the Lambda bundle alongside the handler.
+
+> The `@opentelemetry/*` glob matches **every** installed `@opentelemetry/...`
+> package — with `getNodeAutoInstrumentations()` that is dozens of packages and a
+> larger deployment artifact. For a leaner bundle, list only the specific
+> instrumentations you need (e.g. `@opentelemetry/instrumentation-http`) instead
+> of the glob.
+
+### Collecting traces on Lambda
+
+Point the exporter at a collector running next to your function. The common setup
+is the [AWS Distro for OpenTelemetry (ADOT) Lambda layer](https://aws-otel.github.io/docs/getting-started/lambda),
+which runs a collector at `http://localhost:4318` and forwards to X-Ray (or any
+OTLP backend). Configure it with the standard environment variables on the
+function (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`), e.g. via
+`lambdaProps.environment` on the `SvelteKit` construct.
 
 ## Troubleshooting
 

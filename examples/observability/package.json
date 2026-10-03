@@ -1,0 +1,27 @@
+{
+  "name": "kit-on-lambda-observability-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@beesolve/lambda-fetch-api": "^2.1.0",
+    "kit-on-lambda": "link:kit-on-lambda"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "0.80.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+    "@opentelemetry/sdk-node": "0.222.0",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
+    "@sveltejs/kit": "3.0.0-next.31",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "import-in-the-middle": "3.5.2",
+    "svelte": "^5.57.1",
+    "vite": "^8.0.12"
+  }
+}

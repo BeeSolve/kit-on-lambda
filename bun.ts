@@ -1,10 +1,16 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { Adapter, Builder } from "@sveltejs/kit";
 
-import { computeRoutes } from "./util.js";
+import {
+  computeRoutes,
+  detectPackageManager,
+  installCommand,
+  resolveExternalDependencies,
+} from "./util.js";
 
 interface AdapterOptions {
   /**
@@ -21,6 +27,21 @@ interface AdapterOptions {
    * @default "bun"
    */
   runtime?: "bun" | "node";
+  /**
+   * Packages to leave unbundled (passed through to Bun's `external`).
+   *
+   * The adapter already externalizes the adapter's own runtime dependencies.
+   * Add entries here when a dependency must stay a runtime `import` rather than
+   * being inlined — most notably for OpenTelemetry auto-instrumentation:
+   * `import-in-the-middle` can only patch modules that are still real `import`s
+   * at runtime, so packages you want auto-instrumented (and the instrumentation
+   * packages themselves) must be listed here and shipped in `node_modules`
+   * alongside the handler.
+   *
+   * @example ["@opentelemetry/*", "import-in-the-middle", "require-in-the-middle"]
+   * @default []
+   */
+  external?: Array<string>;
   /**
    * Options for Bun build
    */
@@ -39,7 +60,7 @@ interface AdapterOptions {
 const files = fileURLToPath(new URL("./files", import.meta.url).href);
 
 export default (options: AdapterOptions = {}): Adapter => {
-  const { out = "build", precompress = true, runtime = "bun" } = options;
+  const { out = "build", precompress = true, runtime = "bun", external = [] } = options;
 
   return {
     name: "kit-on-lambda",
@@ -101,9 +122,12 @@ export default (options: AdapterOptions = {}): Adapter => {
 
       const result = await Bun.build({
         entrypoints: Object.values(input),
-        external: Object.keys(pkg.dependencies || {}).map((d) =>
-          new RegExp(`^${d}(\\/.*)?$`).toString(),
-        ),
+        external: [
+          ...Object.keys(pkg.dependencies || {}).map((d) =>
+            new RegExp(`^${d}(\\/.*)?$`).toString(),
+          ),
+          ...external,
+        ],
         target: runtime,
         minify: options.buildOptions?.minify ?? true,
         outdir: `${out}/server`,
@@ -116,9 +140,12 @@ export default (options: AdapterOptions = {}): Adapter => {
         process.exit(1);
       }
 
-      if (runtime === "node") {
-        writeFileSync(`${out}/server/package.json`, JSON.stringify({ type: "module" }));
-      }
+      writeExternalManifest({
+        builder,
+        external,
+        runtime,
+        serverDir: `${out}/server`,
+      });
 
       if (hasInstrumentation && initializer != null) {
         for (const entry of ["handler", "stream"]) {
@@ -146,3 +173,39 @@ export default (options: AdapterOptions = {}): Adapter => {
     },
   };
 };
+
+/**
+ * Write `server/package.json`. The server bundle is ESM, so it always declares
+ * `"type": "module"`. When the adapter was given `external` packages, those are
+ * resolved to pinned versions and installed into `server/node_modules` so they
+ * ship alongside the handler (the Lambda bundles the whole `server/` directory).
+ * This is required for OpenTelemetry auto-instrumentation, which can only patch
+ * packages that remain real runtime `import`s.
+ */
+function writeExternalManifest(props: {
+  builder: Builder;
+  external: Array<string>;
+  runtime: "bun" | "node";
+  serverDir: string;
+}): void {
+  const { builder, external, serverDir } = props;
+
+  const dependencies = resolveExternalDependencies({
+    external,
+    nodeModulesDir: join(process.cwd(), "node_modules"),
+  });
+
+  writeFileSync(
+    join(serverDir, "package.json"),
+    JSON.stringify({ type: "module", private: true, dependencies }, null, 2),
+  );
+
+  const names = Object.keys(dependencies);
+  if (names.length === 0) return;
+
+  const manager = detectPackageManager(process.cwd());
+  const [command, ...args] = installCommand(manager);
+  builder.log.minor(`Installing ${names.length} external package(s) into server/ with ${manager}`);
+  if (command == null) return;
+  execFileSync(command, args, { cwd: serverDir, stdio: "inherit" });
+}

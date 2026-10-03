@@ -50,6 +50,7 @@ jobs:
         run: |
           bun install --frozen-lockfile --cwd examples/basic
           bun install --frozen-lockfile --cwd examples/streaming
+          bun install --frozen-lockfile --cwd examples/observability
           bun install --frozen-lockfile --cwd examples/infra
 
       - name: Build adapter

@@ -10,6 +10,11 @@ examples/basic/build-esb
 examples/basic/build-bun
 examples/streaming/.svelte-kit
 examples/streaming/build
+examples/observability/.svelte-kit
+examples/observability/build
+examples/observability/build-bun
+examples/observability/build-otel-esb
+examples/observability/build-otel-bun
 
 # CDK output
 examples/infra/cdk.out

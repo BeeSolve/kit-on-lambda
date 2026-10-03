@@ -24,11 +24,17 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint & format check
-        run: bun run check
+      - name: Register local package globally
+        run: bun link
 
       - name: Build (adapter + declarations)
         run: bun run prepublishOnly
+
+      - name: Install example app dependencies (for local build/trace tests)
+        run: bun install --frozen-lockfile --cwd examples/observability
+
+      - name: Lint & format check
+        run: bun run check
 
       - name: Unit tests
         run: bun test
