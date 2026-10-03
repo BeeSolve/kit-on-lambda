@@ -1,5 +1,51 @@
 # kit-on-lambda
 
+## 1.0.0
+
+### Major Changes
+
+- 04a9c8e: First stable release. Targets SvelteKit 3 and adds first-class OpenTelemetry observability support.
+
+  **SvelteKit 3**
+
+  - Requires `@sveltejs/kit@^3.0.0`. SvelteKit 2 is no longer supported.
+
+  **Observability (OpenTelemetry)**
+
+  - Fully support SvelteKit 3's integrated observability on Lambda. When `tracing.server` is enabled and a `src/instrumentation.server.ts` file is present, the adapter emits the instrumentation entry, generates the environment initializer, and wires `builder.instrument(...)` so the instrumentation is guaranteed to load before application code on both the buffered and streaming handlers. First-party `sveltekit.handle.*`, `sveltekit.resolve`, and `sveltekit.load` spans flow through to your OpenTelemetry SDK.
+  - Add an `external` build option to both the esbuild (`kit-on-lambda`) and Bun (`kit-on-lambda/bun`) adapters. Listed packages (literal names or trailing-`*` prefixes such as `@opentelemetry/*`) are left unbundled, pinned into `build/server/package.json`, and installed into `build/server/node_modules` so they ship with the handler. This is required for `import-in-the-middle`-based auto-instrumentation, which can only patch modules that remain real runtime `import`s.
+  - Document the full setup in the README and add a runnable `examples/observability` reference app. Notably: do **not** call `module.register("import-in-the-middle/hook.mjs", ...)` yourself — the OpenTelemetry SDK registers `import-in-the-middle` for you, and a current `import-in-the-middle` uses the non-deprecated `module.registerHooks()` API, avoiding the Node `DEP0205` deprecation warning.
+
+  **Notes**
+
+  - `@beesolve/lambda-fetch-api` no longer needs `ssr.external` in your Vite config. The adapter builds the Lambda handler and SvelteKit's SSR server as a single bundle, so the package is deduplicated into one module instance and its `AsyncLocalStorage` store is shared automatically.
+
+### Minor Changes
+
+- e1001b4: Migrate the adapter to SvelteKit 3 (beta). This release targets SvelteKit 3 only and drops SvelteKit 2 support.
+
+  - Bump the `@sveltejs/kit` peer dependency to `^3.0.0`.
+  - Replace the removed `builder.generateManifest` + `"SERVER"`/`"MANIFEST"` string-substitution flow with `builder.generateServerInstance(...)`. The emitted server module exports a `server` object (from `create_server`), so the node and bun handler/stream entries now `import { server } from "SERVER"` and call `server.init(...)` / `server.respond(...)` directly instead of constructing the deprecated `Server` class.
+  - Read `paths.base` from the flattened `builder.config.paths.base` (`builder.config.kit` was removed).
+  - Replace the deprecated `builder.mkdirp` / `builder.rimraf` with `node:fs`.
+  - Update server instrumentation to the new flow: call `builder.createInstrumentationInitializer(...)`, include the initializer in the bundle, then pass its path to `builder.instrument(...)`.
+
+### Patch Changes
+
+- 7fcc0ae: Fix CloudFront routing and prerendered asset deployment.
+
+  - `computeRoutes` no longer emits a greedy one-segment wildcard (e.g. `_app/*`).
+    SvelteKit serves dynamic endpoints under `_app/` too — notably remote
+    functions at `_app/remote/*` — and the broad `_app/*` S3 route shadowed them,
+    sending those dynamic requests to the asset bucket (404/403) instead of the
+    Lambda default behaviour. Routes nested two or more levels deep now collapse
+    to a two-segment wildcard (`_app/immutable/*`) and one-level files stay exact
+    (`_app/version.json`), so dynamic `_app/*` paths fall through to the Lambda.
+  - The S3 `BucketDeployment` now also uploads the `prerendered/` build output
+    (guarded so synth does not fail when no route is prerendered). Prerendered
+    routes were already registered from `routes.json` but their files were never
+    uploaded, so prerendered pages 404'd.
+
 ## 0.9.0-beta.1
 
 ### Patch Changes
