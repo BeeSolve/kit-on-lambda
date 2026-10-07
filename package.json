@@ -62,7 +62,7 @@
   "dependencies": {
     "@beesolve/lambda-bun-runtime": "^3.10400.0",
     "@beesolve/lambda-fetch-api": "^2.1.0",
-    "@beesolve/lambda-function-url-protection": "^0.1.1",
+    "@beesolve/lambda-function-url-protection": "^0.2.0",
     "@beesolve/lambda-keep-active": "^2.1.4"
   },
   "devDependencies": {

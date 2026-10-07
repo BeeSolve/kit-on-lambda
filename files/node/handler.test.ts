@@ -312,5 +312,16 @@ describe("node handler", () => {
       expect(result.statusCode).toBe(403);
       expect(mockRespond).not.toHaveBeenCalled();
     });
+
+    it("passes requests through when ORIGIN_TOKEN is not configured", async () => {
+      delete process.env.ORIGIN_TOKEN;
+
+      const result = asV2Result(
+        await handler(makeV2Event({ headers: { host: "example.com" } }), makeContext()),
+      );
+
+      expect(result.statusCode).toBe(200);
+      expect(mockRespond).toHaveBeenCalled();
+    });
   });
 });
