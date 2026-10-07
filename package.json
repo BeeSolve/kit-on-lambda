@@ -68,7 +68,7 @@
   "devDependencies": {
     "@beesolve/lint-config": "0.3.2",
     "@changesets/cli": "^3.0.2",
-    "@sveltejs/kit": "3.0.0-next.31",
+    "@sveltejs/kit": "3.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/aws-lambda": "^8.10.163",
     "@types/bun": "^1.4.0",
@@ -76,7 +76,7 @@
     "esbuild": "^0.28.2",
     "husky": "^9.1.7",
     "nano-staged": "^1.0.2",
-    "oxfmt": "^0.70.0",
+    "oxfmt": "^0.71.0",
     "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.0",
     "typescript": "^7.0.2"
