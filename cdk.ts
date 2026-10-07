@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
 import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
+import { protectedFunctionUrlOrigin } from "@beesolve/lambda-function-url-protection";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import type { DistributionProps, OriginBase } from "aws-cdk-lib/aws-cloudfront";
@@ -18,22 +19,14 @@ import {
   PriceClass,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
-import { FunctionUrlOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import {
-  Architecture,
-  Code,
-  FunctionUrlAuthType,
-  InvokeMode,
-  LoggingFormat,
-  Runtime,
-} from "aws-cdk-lib/aws-lambda";
+import { Architecture, Code, InvokeMode, LoggingFormat, Runtime } from "aws-cdk-lib/aws-lambda";
 import type { NodejsFunctionProps } from "aws-cdk-lib/aws-lambda-nodejs";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 
 import { assertUnreachable } from "./util.js";
@@ -305,29 +298,6 @@ export class SvelteKit extends Construct {
 }
 
 function toFunctionUrlOrigin() {
-  return (props: { handler: Function; invokeMode?: InvokeMode }): OriginBase => {
-    const originToken = new Secret(props.handler, "OriginToken", {
-      description: `x-origin-token for ${props.handler.node.path}.`,
-      removalPolicy: RemovalPolicy.DESTROY,
-      generateSecretString: { passwordLength: 128, excludePunctuation: true },
-    }).secretValue.toString();
-
-    props.handler.addEnvironment("ORIGIN_TOKEN", originToken);
-
-    const invokeMode = props.invokeMode ?? InvokeMode.RESPONSE_STREAM;
-
-    const url = props.handler.addFunctionUrl({
-      authType: FunctionUrlAuthType.NONE,
-      invokeMode,
-      cors: {
-        allowedOrigins: ["*"],
-      },
-    });
-
-    return new FunctionUrlOrigin(url, {
-      customHeaders: {
-        "x-origin-token": originToken,
-      },
-    });
-  };
+  return (props: { handler: Function; invokeMode?: InvokeMode }): OriginBase =>
+    protectedFunctionUrlOrigin({ handler: props.handler, invokeMode: props.invokeMode });
 }

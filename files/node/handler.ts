@@ -7,6 +7,7 @@ import {
   isAPIGatewayProxyEvent,
   runWithAwsContext,
 } from "@beesolve/lambda-fetch-api";
+import { protectHandler } from "@beesolve/lambda-function-url-protection/runtime";
 import { keptActive } from "@beesolve/lambda-keep-active/runtime";
 import { createReadableStream } from "@sveltejs/kit/node";
 import type {
@@ -33,23 +34,25 @@ function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
-export const handler = keptActive(async function respond(
-  event: APIGatewayProxyEvent | APIGatewayProxyEventV2,
-  context: Context,
-): Promise<APIGatewayProxyResult | APIGatewayProxyResultV2> {
-  const request = awsRequest(event);
+export const handler = keptActive(
+  protectHandler(async function respond(
+    event: APIGatewayProxyEvent | APIGatewayProxyEventV2,
+    context: Context,
+  ): Promise<APIGatewayProxyResult | APIGatewayProxyResultV2> {
+    const request = awsRequest(event);
 
-  return runWithAwsContext(event, context, async () => {
-    const response = await server.respond(request, {
-      getClientAddress() {
-        return request.headers.get("x-forwarded-for") ?? "";
-      },
+    return runWithAwsContext(event, context, async () => {
+      const response = await server.respond(request, {
+        getClientAddress() {
+          return request.headers.get("x-forwarded-for") ?? "";
+        },
+      });
+
+      return {
+        statusCode: response.status,
+        ...awsResponseHeaders(response, isAPIGatewayProxyEvent(event) ? "v1" : "v2"),
+        ...(await awsResponseBody(response)),
+      };
     });
-
-    return {
-      statusCode: response.status,
-      ...awsResponseHeaders(response, isAPIGatewayProxyEvent(event) ? "v1" : "v2"),
-      ...(await awsResponseBody(response)),
-    };
-  });
-});
+  }),
+);

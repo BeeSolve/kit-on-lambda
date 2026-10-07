@@ -27,6 +27,7 @@ await Promise.all([
       "constructs",
       "esbuild",
       "@beesolve/lambda-bun-runtime",
+      "@beesolve/lambda-function-url-protection",
       "@beesolve/lambda-keep-active",
     ],
     target: "node",

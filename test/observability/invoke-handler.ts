@@ -33,6 +33,9 @@ process.on("warning", (warning) => {
   if (warning.message.includes("module.register()")) dep0205 = true;
 });
 
+const originToken = "observability-origin-token";
+process.env.ORIGIN_TOKEN = originToken;
+
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dynamically imported built handler
 const { handler } = (await import(handlerPath)) as {
   handler: (
@@ -46,7 +49,7 @@ const event: APIGatewayProxyEventV2 = {
   routeKey: "GET /",
   rawPath: "/",
   rawQueryString: "",
-  headers: { host: "localhost" },
+  headers: { host: "localhost", "x-origin-token": originToken },
   requestContext: {
     accountId: "000000000000",
     apiId: "local",

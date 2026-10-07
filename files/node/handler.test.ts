@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import process from "node:process";
 
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
 import type {
@@ -10,6 +11,10 @@ import type {
 } from "aws-lambda";
 
 type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
+
+const originToken = "test-origin-token";
+
+let originalToken: string | undefined;
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
@@ -32,7 +37,7 @@ function makeV1Event(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayP
     httpMethod: "GET",
     path: "/",
     resource: "/",
-    headers: { host: "example.com" },
+    headers: { host: "example.com", "x-origin-token": originToken },
     multiValueHeaders: {},
     queryStringParameters: null,
     multiValueQueryStringParameters: null,
@@ -52,7 +57,7 @@ function makeV2Event(overrides: Partial<APIGatewayProxyEventV2> = {}): APIGatewa
     routeKey: "$default",
     rawPath: "/",
     rawQueryString: "",
-    headers: { host: "example.com" },
+    headers: { host: "example.com", "x-origin-token": originToken },
     requestContext: {
       accountId: "123456789",
       apiId: "test",
@@ -108,10 +113,20 @@ function asV2Result(result: HandlerResult): APIGatewayProxyStructuredResultV2 {
 
 describe("node handler", () => {
   beforeEach(() => {
+    originalToken = process.env.ORIGIN_TOKEN;
+    process.env.ORIGIN_TOKEN = originToken;
     mockRespond.mockReset();
     mockRespond.mockImplementation(
       async () => new Response("ok", { headers: { "content-type": "text/plain" } }),
     );
+  });
+
+  afterEach(() => {
+    if (originalToken == null) {
+      delete process.env.ORIGIN_TOKEN;
+      return;
+    }
+    process.env.ORIGIN_TOKEN = originalToken;
   });
 
   describe("v1 event", () => {
@@ -222,7 +237,13 @@ describe("node handler", () => {
       });
 
       await handler(
-        makeV2Event({ headers: { host: "example.com", "x-forwarded-for": "1.2.3.4" } }),
+        makeV2Event({
+          headers: {
+            host: "example.com",
+            "x-forwarded-for": "1.2.3.4",
+            "x-origin-token": originToken,
+          },
+        }),
         makeContext(),
       );
 
@@ -278,6 +299,17 @@ describe("node handler", () => {
       const result = await handler(pingEvent, makeContext());
 
       expect(result).toBeUndefined();
+      expect(mockRespond).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("origin token", () => {
+    it("rejects requests without a valid origin token", async () => {
+      const result = asV2Result(
+        await handler(makeV2Event({ headers: { host: "example.com" } }), makeContext()),
+      );
+
+      expect(result.statusCode).toBe(403);
       expect(mockRespond).not.toHaveBeenCalled();
     });
   });

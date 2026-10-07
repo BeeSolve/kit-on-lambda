@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import process from "node:process";
 
 import { getAwsContext, getAwsEvent } from "@beesolve/lambda-fetch-api";
 import type {
@@ -8,6 +9,10 @@ import type {
 } from "aws-lambda";
 
 type Context = Omit<LambdaContext, "done" | "succeed" | "fail">;
+
+const originToken = "test-origin-token";
+
+let originalToken: string | undefined;
 
 const mockRespond = mock(
   async (_req: Request, _opts: { getClientAddress(): string }) =>
@@ -42,7 +47,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEventV2> = {}): APIGatewayP
     routeKey: "$default",
     rawPath: "/",
     rawQueryString: "",
-    headers: { host: "example.com" },
+    headers: { host: "example.com", "x-origin-token": originToken },
     requestContext: {
       accountId: "123456789",
       apiId: "test",
@@ -83,10 +88,20 @@ function makeContext(overrides: Partial<Context> = {}): Context {
 
 describe("bun handler", () => {
   beforeEach(() => {
+    originalToken = process.env.ORIGIN_TOKEN;
+    process.env.ORIGIN_TOKEN = originToken;
     mockRespond.mockReset();
     mockRespond.mockImplementation(
       async () => new Response("ok", { headers: { "content-type": "text/plain" } }),
     );
+  });
+
+  afterEach(() => {
+    if (originalToken == null) {
+      delete process.env.ORIGIN_TOKEN;
+      return;
+    }
+    process.env.ORIGIN_TOKEN = originalToken;
   });
 
   it("returns the response status code", async () => {
@@ -156,7 +171,13 @@ describe("bun handler", () => {
     });
 
     await handler(
-      makeEvent({ headers: { host: "example.com", "x-forwarded-for": "1.2.3.4" } }),
+      makeEvent({
+        headers: {
+          host: "example.com",
+          "x-forwarded-for": "1.2.3.4",
+          "x-origin-token": originToken,
+        },
+      }),
       makeContext(),
     );
 
@@ -209,5 +230,16 @@ describe("bun handler", () => {
 
     expect(result).toBeUndefined();
     expect(mockRespond).not.toHaveBeenCalled();
+  });
+
+  describe("origin token", () => {
+    it("rejects requests without a valid origin token", async () => {
+      const result = asV2Result(
+        await handler(makeEvent({ headers: { host: "example.com" } }), makeContext()),
+      );
+
+      expect(result.statusCode).toBe(403);
+      expect(mockRespond).not.toHaveBeenCalled();
+    });
   });
 });
