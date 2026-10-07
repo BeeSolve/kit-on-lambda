@@ -22,7 +22,9 @@
     "url": "git+ssh://git@github.com/BeeSolve/kit-on-lambda.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "docs/how-to",
+    "DOCS.md"
   ],
   "type": "module",
   "exports": {
