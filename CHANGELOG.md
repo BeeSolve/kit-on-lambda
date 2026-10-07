@@ -1,5 +1,12 @@
 # kit-on-lambda
 
+## 1.1.1
+
+### Patch Changes
+
+- f74a08c: Bump @sveltejs/kit, @types/node, oxfmt (version-update:semver-minor)
+- 16de5ab: Bump @beesolve/lambda-function-url-protection to ^0.2.0, whose origin-token enforcement is now opt-in by the `ORIGIN_TOKEN` environment variable. This fixes the API Gateway origin configuration, where the handler is deployed without `ORIGIN_TOKEN` and must pass requests through rather than reject them with a 403.
+
 ## 1.1.0
 
 ### Minor Changes
