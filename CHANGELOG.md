@@ -1,5 +1,11 @@
 # kit-on-lambda
 
+## 1.1.2
+
+### Patch Changes
+
+- c6495df: Upgrade dependencies.
+
 ## 1.1.1
 
 ### Patch Changes
