@@ -15,7 +15,7 @@ jobs:
   # Cheap gate that runs on every PR (including Dependabot and forks): build,
   # lint, format check, and unit tests. Requires no secrets.
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -63,7 +63,7 @@ jobs:
   integration-gate:
     needs: integration
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Enforce integration result
         env:
