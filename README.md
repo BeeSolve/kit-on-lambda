@@ -105,9 +105,9 @@ adapter locally, see
 The default adapter. Uses esbuild to bundle the server and deploys to the official Node.js Lambda runtime.
 
 ```ts
+import { sveltekit } from "@sveltejs/kit/vite";
 // vite.config.ts
 import adapter from "kit-on-lambda";
-import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -188,9 +188,9 @@ cross-origin form and remote-function submissions.
 > 404s and drops all styling/scripts on nested routes. Use either option above.
 
 ```ts
+import { App, Stack, type Environment } from "aws-cdk-lib";
 // app.ts
 import { SvelteKit } from "kit-on-lambda/cdk";
-import { App, Stack, type Environment } from "aws-cdk-lib";
 
 const env: Environment = {
   account: "your-account-id",
@@ -251,14 +251,14 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 Install [`@beesolve/lambda-fetch-api`](https://www.npmjs.com/package/@beesolve/lambda-fetch-api) and use `getAwsEvent()` / `getAwsContext()` from anywhere inside a request handler. These are backed by `AsyncLocalStorage` — no request argument needed.
 
 ```ts
-// hooks.server.ts
-import type { Handle } from "@sveltejs/kit/hooks";
 import {
   getAwsContext,
   getAwsEvent,
   isAPIGatewayProxyEvent,
   isAPIGatewayProxyEventV2,
 } from "@beesolve/lambda-fetch-api";
+// hooks.server.ts
+import type { Handle } from "@sveltejs/kit/hooks";
 
 export const handle: Handle = async ({ event, resolve }) => {
   const awsEvent = getAwsEvent();
@@ -293,9 +293,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime).
 
 ```ts
+import { sveltekit } from "@sveltejs/kit/vite";
 // vite.config.ts
 import adapter from "kit-on-lambda/bun";
-import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -310,9 +310,9 @@ export default defineConfig({
 ```
 
 ```ts
+import { App, Stack, type Environment } from "aws-cdk-lib";
 // app.ts
 import { SvelteKit } from "kit-on-lambda/cdk";
-import { App, Stack, type Environment } from "aws-cdk-lib";
 
 const app = new App();
 const stack = new Stack(app, "YourSite", {
@@ -338,9 +338,9 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful when you want Bun's faster build times without requiring a custom Lambda layer.
 
 ```ts
+import { sveltekit } from "@sveltejs/kit/vite";
 // vite.config.ts
 import adapter from "kit-on-lambda/bun";
-import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -355,9 +355,9 @@ export default defineConfig({
 ```
 
 ```ts
+import { App, Stack, type Environment } from "aws-cdk-lib";
 // app.ts
 import { SvelteKit } from "kit-on-lambda/cdk";
-import { App, Stack, type Environment } from "aws-cdk-lib";
 
 const app = new App();
 const stack = new Stack(app, "YourSite", {
@@ -378,13 +378,13 @@ The `SvelteKit` construct uses a Function URL as the CloudFront origin by defaul
 Use this when you need a Lambda authorizer at the gateway level (e.g., for session validation). Response streaming is not available with HTTP API Gateway — the Lambda always uses the buffered handler.
 
 ```ts
-// app.ts
-import { SvelteKit } from "kit-on-lambda/cdk";
 import { App, Stack, type Environment } from "aws-cdk-lib";
-import { InvokeMode } from "aws-cdk-lib/aws-lambda";
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { InvokeMode } from "aws-cdk-lib/aws-lambda";
+// app.ts
+import { SvelteKit } from "kit-on-lambda/cdk";
 
 const app = new App();
 const stack = new Stack(app, "YourSite", {
@@ -440,9 +440,9 @@ A complete, runnable reference lives in
 Turn on SvelteKit's server tracing in `vite.config.ts`:
 
 ```ts
+import { sveltekit } from "@sveltejs/kit/vite";
 // vite.config.ts
 import adapter from "kit-on-lambda";
-import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({

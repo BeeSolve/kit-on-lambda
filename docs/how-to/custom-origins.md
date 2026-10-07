@@ -19,10 +19,10 @@ The construct calls your factory with the SvelteKit `handler` and the selected
 `invokeMode`, and expects a CloudFront origin back.
 
 ```ts
-import { SvelteKit } from "kit-on-lambda/cdk";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { SvelteKit } from "kit-on-lambda/cdk";
 
 new SvelteKit(this, "App", {
   buildDirectory: join(__dirname, "../build"),
