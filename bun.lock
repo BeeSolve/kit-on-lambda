@@ -78,7 +78,7 @@
 
     "@beesolve/helpers": ["@beesolve/helpers@0.2.1", "", { "dependencies": { "valibot": "^1.5.0" }, "peerDependencies": { "typescript": "^7.0.2" }, "optionalPeers": ["typescript"] }, "sha512-z0u0n8w1EO7dmMA6HnQYtXH6MxWMhCKyN8R+cFyUnQdyDxJkpKcRvO3K4MfVZhnbZfZswjKlNpqGCTDWbIq/Ew=="],
 
-    "@beesolve/lambda-bun-runtime": ["@beesolve/lambda-bun-runtime@3.10402.1", "", { "peerDependencies": { "aws-cdk-lib": "^2.238.0", "constructs": "^10.4.5" } }, "sha512-WIeOs72XRS62vtY5EV89iA4R/XRjd7zBJhm3kX02eArXrRdz2d+eqZHGrSRxxUsV30QJ4LrtNNKQEggc15YdNQ=="],
+    "@beesolve/lambda-bun-runtime": ["@beesolve/lambda-bun-runtime@3.10403.0", "", { "peerDependencies": { "aws-cdk-lib": "^2.238.0", "constructs": "^10.4.5" } }, "sha512-h1wDJWNmkKtKMbIqFSD4F8u2SUWPNVKkW8NnmDl2OhSl2ek2JbniATCaMlSXfXvzbPHDR3lNyeBT9/Fg5x/99g=="],
 
     "@beesolve/lambda-fetch-api": ["@beesolve/lambda-fetch-api@2.1.2", "", { "dependencies": { "@beesolve/helpers": "^0.2.1" }, "peerDependencies": { "typescript": "^7.0.2" }, "optionalPeers": ["typescript"] }, "sha512-3pGB6qNBMIVIqLF/6v9ksNT6g+6thzqIrVMe8d7pb9QWv5nT8ClmLIM5NTfIpSy3Kz8h5U9QHdD8yfcGT14Gcg=="],
 
