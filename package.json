@@ -66,9 +66,9 @@
     "@beesolve/lambda-keep-active": "^2.1.6"
   },
   "devDependencies": {
-    "@beesolve/lint-config": "0.3.3",
+    "@beesolve/lint-config": "0.3.4",
     "@changesets/cli": "^3.0.3",
-    "@sveltejs/kit": "3.0.1",
+    "@sveltejs/kit": "3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/aws-lambda": "^8.10.164",
     "@types/bun": "^1.4.2",
@@ -76,7 +76,7 @@
     "esbuild": "^0.28.2",
     "husky": "^9.1.7",
     "nano-staged": "^1.0.2",
-    "oxfmt": "^0.72.0",
+    "oxfmt": "^0.73.0",
     "oxlint": "^1.87.0",
     "oxlint-tsgolint": "^7.0.2003",
     "typescript": "^7.0.2"
