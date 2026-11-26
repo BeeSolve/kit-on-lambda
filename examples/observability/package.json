@@ -9,19 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@beesolve/lambda-fetch-api": "^2.1.0",
+    "@beesolve/lambda-fetch-api": "^2.1.4",
     "kit-on-lambda": "link:kit-on-lambda"
   },
   "devDependencies": {
-    "@opentelemetry/api": "1.9.1",
-    "@opentelemetry/auto-instrumentations-node": "0.80.0",
-    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
-    "@opentelemetry/sdk-node": "0.222.0",
-    "@opentelemetry/sdk-trace-base": "2.11.0",
-    "@sveltejs/kit": "3.0.0-next.31",
-    "@sveltejs/vite-plugin-svelte": "^7.3.0",
-    "import-in-the-middle": "3.5.2",
-    "svelte": "^5.57.1",
-    "vite": "^8.0.12"
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/auto-instrumentations-node": "0.83.1",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.301.2",
+    "@opentelemetry/sdk-node": "0.301.2",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
+    "@sveltejs/kit": "3.4.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.2",
+    "import-in-the-middle": "3.7.0",
+    "svelte": "^5.59.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.4.0"
   }
 }

@@ -9,11 +9,11 @@ By default the construct uses a Lambda Function URL as the CloudFront origin (wi
 
 Three build/runtime configurations are supported:
 
-| Option      | Build tool | Lambda runtime     |
-| ----------- | ---------- | ------------------ |
-| 1 (default) | esbuild    | Node.js            |
-| 2           | Bun        | Bun (custom layer) |
-| 3           | Bun        | Node.js            |
+| Option      | Build tool | Lambda runtime                 |
+| ----------- | ---------- | ------------------------------ |
+| 1 (default) | esbuild    | Node.js                        |
+| 2           | Bun        | Bun (customer-managed runtime) |
+| 3           | Bun        | Node.js                        |
 
 ## Installation
 
@@ -290,7 +290,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ## Option 2 — build with Bun, run on Bun runtime
 
-Uses Bun to bundle the server and deploys to a custom Bun Lambda runtime via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime).
+Uses Bun to bundle the server and deploys to the Bun Lambda customer-managed runtime (CMR) via [`@beesolve/lambda-bun-runtime`](https://www.npmjs.com/package/@beesolve/lambda-bun-runtime) v4. Response streaming is supported.
+
+Requirements: `aws-cdk-lib` 2.278.0 or newer and a stack with a concrete region. BeeSolve publishes the runtime in `eu-north-1`, `eu-central-1`, `eu-west-1`, `us-east-1` and `us-west-2`. In any other region, publish your own runtime (see the package docs) and pass its ARN:
+
+```ts
+new SvelteKit(stack, "SvelteKit", {
+  runtime: "bun",
+  lambdaProps: {
+    bunRuntime: {
+      runtimeArn: "arn:aws:lambda:eu-west-3:123456789012:runtime/bun",
+      runtimeAlias: "latest",
+    },
+  },
+});
+```
 
 ```ts
 import { sveltekit } from "@sveltejs/kit/vite";
@@ -335,7 +349,7 @@ const { handler, distribution } = new SvelteKit(stack, "SvelteKit", {
 
 ## Option 3 — build with Bun, run on Node.js runtime
 
-Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful when you want Bun's faster build times without requiring a custom Lambda layer.
+Uses Bun as the bundler but targets the official Node.js Lambda runtime. Useful when you want Bun's faster build times without requiring a custom Lambda runtime.
 
 ```ts
 import { sveltekit } from "@sveltejs/kit/vite";

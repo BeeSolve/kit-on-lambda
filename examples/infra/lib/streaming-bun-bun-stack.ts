@@ -15,7 +15,7 @@ export class StreamingBunBunStack extends Stack {
     const sk = new SvelteKit(this, "App", {
       buildDirectory: join(__dirname, "../../streaming/build"),
       runtime: "bun",
-      invokeMode: InvokeMode.BUFFERED,
+      invokeMode: InvokeMode.RESPONSE_STREAM,
     });
 
     new CfnOutput(this, "DistributionUrl", {

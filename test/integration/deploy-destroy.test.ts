@@ -108,7 +108,7 @@ basicSuite("Config 2: bun bundler + Node.js", () => outputs.BunNodeUrl);
 basicSuite("Config 3: bun bundler + Bun", () => outputs.BunBunUrl);
 basicSuite("Config 4: HTTP API Gateway + Node.js", () => outputs.HttpApiNodeUrl);
 
-describe.skip("Config 3: streaming-specific (disabled — awaiting @beesolve/lambda-bun-runtime streaming support)", () => {
+describeInteg("Config 3: streaming-specific", () => {
   test("large payload (>6 MB) is returned without error", async () => {
     const res = await fetch(`${outputs.BunBunUrl}/api/large`);
     expect(res.status).toBe(200);

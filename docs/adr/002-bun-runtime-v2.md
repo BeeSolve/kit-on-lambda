@@ -1,5 +1,7 @@
 # ADR-002: Upgrade `@beesolve/lambda-bun-runtime` to v2
 
+> Streaming deferral below is superseded by [ADR-007](007-bun-cmr-streaming.md).
+
 **Date:** 2025  
 **Status:** Accepted
 

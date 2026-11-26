@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { BunFunctionProps } from "@beesolve/lambda-bun-runtime";
-import { BunFunction, BunLambdaLayer } from "@beesolve/lambda-bun-runtime";
+import { BunFunction } from "@beesolve/lambda-bun-runtime";
 import { protectedFunctionUrlOrigin } from "@beesolve/lambda-function-url-protection";
 import { LambdaKeepActive } from "@beesolve/lambda-keep-active";
 import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
@@ -113,6 +113,10 @@ type SvelteKitProps =
        * By default Lambda with 1024MB and 10s of timeout is created.
        *
        * You can change any Lambda function options here.
+       *
+       * The function runs on the Bun customer-managed runtime BeeSolve publishes in
+       * eu-north-1, eu-central-1, eu-west-1, us-east-1 and us-west-2. In other regions
+       * publish your own runtime and set `bunRuntime: { runtimeArn, runtimeAlias }`.
        */
       readonly lambdaProps?: Omit<BunFunctionProps, "entrypoint">;
     });
@@ -255,12 +259,7 @@ export class SvelteKit extends Construct {
 
   private readonly toHandler = (props: SvelteKitProps, buildDirectory: string) => {
     if (props.runtime === "bun") {
-      const {
-        invokeMode = InvokeMode.RESPONSE_STREAM,
-        lambdaProps = {
-          bunLayer: new BunLambdaLayer(this, "BunLayer"),
-        } satisfies Omit<BunFunctionProps, "entrypoint">,
-      } = props;
+      const { invokeMode = InvokeMode.RESPONSE_STREAM, lambdaProps = {} } = props;
 
       return new BunFunction(this, "Handler", {
         entrypoint: `${buildDirectory}/server/${invokeMode === InvokeMode.RESPONSE_STREAM ? "stream" : "handler"}.js`,
