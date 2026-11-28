@@ -8,7 +8,7 @@
         "@beesolve/lambda-bun-runtime": "^4.10405.1",
         "@beesolve/lambda-fetch-api": "^2.1.4",
         "@beesolve/lambda-function-url-protection": "^1.0.0",
-        "@beesolve/lambda-keep-active": "^2.1.15",
+        "@beesolve/lambda-keep-active": "^2.2.0",
       },
       "devDependencies": {
         "@beesolve/lint-config": "1.0.0",
@@ -84,7 +84,7 @@
 
     "@beesolve/lambda-function-url-protection": ["@beesolve/lambda-function-url-protection@1.0.0", "", { "peerDependencies": { "aws-cdk-lib": "^2.275.0", "constructs": "^10.8.1", "typescript": "^7.0.2" }, "optionalPeers": ["typescript"] }, "sha512-qcSjkFBl8PzxcyR4ftB39kPUisuhTcEeQ61Hn0ak/CiWaH80QofQwzotplFK//cUhx30U5rG2R12oqmCtZgVKQ=="],
 
-    "@beesolve/lambda-keep-active": ["@beesolve/lambda-keep-active@2.1.15", "", { "dependencies": { "@aws-sdk/client-lambda": "^3.1158.0", "@aws-sdk/client-resource-groups-tagging-api": "^3.1158.0", "@beesolve/cdk-constructs": "^1.0.0" }, "peerDependencies": { "aws-cdk-lib": "^2.275.0", "constructs": "^10.8.1" } }, "sha512-BDf/L5S6x9fjfLWN3DipZR2bGNDjDs4ySj03FIOZxvV8pqdMHkwjkHEyqjGs+lpQDEy/FuvXd/LXnwp33mNpjw=="],
+    "@beesolve/lambda-keep-active": ["@beesolve/lambda-keep-active@2.2.0", "", { "dependencies": { "@aws-sdk/client-lambda": "^3.1158.0", "@aws-sdk/client-resource-groups-tagging-api": "^3.1158.0", "@beesolve/cdk-constructs": "^1.0.0" }, "peerDependencies": { "aws-cdk-lib": "^2.275.0", "constructs": "^10.8.1" } }, "sha512-ZPwotIT3hnepMBz0ar1HBDAq1CMIkwjstYOzmdeZdw67lvie3JHvnuoMGgwW1IuPddbMIm/dO+/qJe0bly2ZHQ=="],
 
     "@beesolve/lint-config": ["@beesolve/lint-config@1.0.0", "", { "dependencies": { "oxlint-plugin-eslint": "^1.90.0" }, "peerDependencies": { "oxlint": ">=1.87.0", "oxlint-tsgolint": ">=7.0.2004" }, "optionalPeers": ["oxlint", "oxlint-tsgolint"], "bin": { "beesolve-lint-setup": "scripts/setup.ts" } }, "sha512-qq8TtPjIqPmBg3UqKX7O7yga8FRyT4AnEvhrKfWXQ3rXUpwXkn/4lK1Q5crKneYe03dW7c9O6IH6zzH2cN0JSQ=="],
 

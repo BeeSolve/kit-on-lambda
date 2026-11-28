@@ -2,6 +2,7 @@ import process from "node:process";
 
 import { asResponseStreamHandler } from "@beesolve/lambda-fetch-api";
 import { protectFetch } from "@beesolve/lambda-function-url-protection/runtime";
+import { keptActiveStreaming } from "@beesolve/lambda-keep-active/runtime";
 import { createReadableStream } from "@sveltejs/kit/node";
 import { server } from "SERVER";
 
@@ -18,12 +19,14 @@ function definedEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
-export const handler = asResponseStreamHandler(
-  protectFetch(async (request: Request) => {
-    return server.respond(request, {
-      getClientAddress() {
-        return request.headers.get("x-forwarded-for") ?? "";
-      },
-    });
-  }),
+export const handler = keptActiveStreaming(
+  asResponseStreamHandler(
+    protectFetch(async (request: Request) => {
+      return server.respond(request, {
+        getClientAddress() {
+          return request.headers.get("x-forwarded-for") ?? "";
+        },
+      });
+    }),
+  ),
 );

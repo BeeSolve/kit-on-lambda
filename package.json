@@ -63,7 +63,7 @@
     "@beesolve/lambda-bun-runtime": "^4.10405.1",
     "@beesolve/lambda-fetch-api": "^2.1.4",
     "@beesolve/lambda-function-url-protection": "^1.0.0",
-    "@beesolve/lambda-keep-active": "^2.1.15"
+    "@beesolve/lambda-keep-active": "^2.2.0"
   },
   "devDependencies": {
     "@beesolve/lint-config": "1.0.0",
